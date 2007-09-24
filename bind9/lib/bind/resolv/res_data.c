@@ -1,22 +1,22 @@
 /*
+ * Copyright (c) 2004 by Internet Systems Consortium, Inc. ("ISC")
  * Copyright (c) 1995-1999 by Internet Software Consortium.
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
  *
- * THE SOFTWARE IS PROVIDED "AS IS" AND INTERNET SOFTWARE CONSORTIUM DISCLAIMS
- * ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL INTERNET SOFTWARE
- * CONSORTIUM BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
- * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
- * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
- * ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
- * SOFTWARE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
+ * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
 #if defined(LIBC_SCCS) && !defined(lint)
-static const char rcsid[] = "$Id: res_data.c,v 1.1.1.1 2003/01/10 00:48:32 bbraun Exp $";
+static const char rcsid[] = "$Id: res_data.c,v 1.3.18.1 2005/04/27 05:01:10 sra Exp $";
 #endif /* LIBC_SCCS and not lint */
 
 #include "port_before.h"
@@ -46,8 +46,8 @@ const char *_res_opcodes[] = {
 	"QUERY",
 	"IQUERY",
 	"CQUERYM",
-	"CQUERYU",	/* experimental */
-	"NOTIFY",	/* experimental */
+	"CQUERYU",	/*%< experimental */
+	"NOTIFY",	/*%< experimental */
 	"UPDATE",
 	"6",
 	"7",
@@ -73,7 +73,7 @@ const char *_res_sectioncodes[] = {
 #ifndef __BIND_NOSTATIC
 struct __res_state _res
 # if defined(__BIND_RES_TEXT)
-	= { RES_TIMEOUT, }	/* Motorola, et al. */
+	= { RES_TIMEOUT, }	/*%< Motorola, et al. */
 # endif
         ;
 
@@ -133,23 +133,23 @@ fp_query(const u_char *msg, FILE *file) {
 
 void
 fp_nquery(const u_char *msg, int len, FILE *file) {
-	if ((_res.options & RES_INIT) == 0 && res_init() == -1)
+	if ((_res.options & RES_INIT) == 0U && res_init() == -1)
 		return;
 
 	res_pquery(&_res, msg, len, file);
 }
 
 int
-res_mkquery(int op,			/* opcode of query */
-	    const char *dname,		/* domain name */
-	    int class, int type,	/* class and type of query */
-	    const u_char *data,		/* resource record data */
-	    int datalen,		/* length of data */
-	    const u_char *newrr_in,	/* new rr for modify or append */
-	    u_char *buf,		/* buffer to put query */
-	    int buflen)			/* size of buffer */
+res_mkquery(int op,			/*!< opcode of query  */
+	    const char *dname,		/*!< domain name  */
+	    int class, int type,	/*!< class and type of query  */
+	    const u_char *data,		/*!< resource record data  */
+	    int datalen,		/*!< length of data  */
+	    const u_char *newrr_in,	/*!< new rr for modify or append  */
+	    u_char *buf,		/*!< buffer to put query  */
+	    int buflen)			/*!< size of buffer  */
 {
-	if ((_res.options & RES_INIT) == 0 && res_init() == -1) {
+	if ((_res.options & RES_INIT) == 0U && res_init() == -1) {
 		RES_SET_H_ERRNO(&_res, NETDB_INTERNAL);
 		return (-1);
 	}
@@ -160,7 +160,7 @@ res_mkquery(int op,			/* opcode of query */
 
 int
 res_mkupdate(ns_updrec *rrecp_in, u_char *buf, int buflen) {
-	if ((_res.options & RES_INIT) == 0 && res_init() == -1) {
+	if ((_res.options & RES_INIT) == 0U && res_init() == -1) {
 		RES_SET_H_ERRNO(&_res, NETDB_INTERNAL);
 		return (-1);
 	}
@@ -169,12 +169,12 @@ res_mkupdate(ns_updrec *rrecp_in, u_char *buf, int buflen) {
 }
 
 int
-res_query(const char *name,	/* domain name */
-	  int class, int type,	/* class and type of query */
-	  u_char *answer,	/* buffer to put answer */
-	  int anslen)		/* size of answer buffer */
+res_query(const char *name,	/*!< domain name  */
+	  int class, int type,	/*!< class and type of query  */
+	  u_char *answer,	/*!< buffer to put answer  */
+	  int anslen)		/*!< size of answer buffer  */
 {
-	if ((_res.options & RES_INIT) == 0 && res_init() == -1) {
+	if ((_res.options & RES_INIT) == 0U && res_init() == -1) {
 		RES_SET_H_ERRNO(&_res, NETDB_INTERNAL);
 		return (-1);
 	}
@@ -198,7 +198,7 @@ res_isourserver(const struct sockaddr_in *inp) {
 
 int
 res_send(const u_char *buf, int buflen, u_char *ans, int anssiz) {
-	if ((_res.options & RES_INIT) == 0 && res_init() == -1) {
+	if ((_res.options & RES_INIT) == 0U && res_init() == -1) {
 		/* errno should have been set by res_init() in this case. */
 		return (-1);
 	}
@@ -210,7 +210,7 @@ int
 res_sendsigned(const u_char *buf, int buflen, ns_tsig_key *key,
 	       u_char *ans, int anssiz)
 {
-	if ((_res.options & RES_INIT) == 0 && res_init() == -1) {
+	if ((_res.options & RES_INIT) == 0U && res_init() == -1) {
 		/* errno should have been set by res_init() in this case. */
 		return (-1);
 	}
@@ -225,7 +225,7 @@ res_close(void) {
 
 int
 res_update(ns_updrec *rrecp_in) {
-	if ((_res.options & RES_INIT) == 0 && res_init() == -1) {
+	if ((_res.options & RES_INIT) == 0U && res_init() == -1) {
 		RES_SET_H_ERRNO(&_res, NETDB_INTERNAL);
 		return (-1);
 	}
@@ -234,12 +234,12 @@ res_update(ns_updrec *rrecp_in) {
 }
 
 int
-res_search(const char *name,	/* domain name */
-	   int class, int type,	/* class and type of query */
-	   u_char *answer,	/* buffer to put answer */
-	   int anslen)		/* size of answer */
+res_search(const char *name,	/*!< domain name  */
+	   int class, int type,	/*!< class and type of query  */
+	   u_char *answer,	/*!< buffer to put answer  */
+	   int anslen)		/*!< size of answer  */
 {
-	if ((_res.options & RES_INIT) == 0 && res_init() == -1) {
+	if ((_res.options & RES_INIT) == 0U && res_init() == -1) {
 		RES_SET_H_ERRNO(&_res, NETDB_INTERNAL);
 		return (-1);
 	}
@@ -250,11 +250,11 @@ res_search(const char *name,	/* domain name */
 int
 res_querydomain(const char *name,
 		const char *domain,
-		int class, int type,	/* class and type of query */
-		u_char *answer,		/* buffer to put answer */
-		int anslen)		/* size of answer */
+		int class, int type,	/*!< class and type of query  */
+		u_char *answer,		/*!< buffer to put answer  */
+		int anslen)		/*!< size of answer  */
 {
-	if ((_res.options & RES_INIT) == 0 && res_init() == -1) {
+	if ((_res.options & RES_INIT) == 0U && res_init() == -1) {
 		RES_SET_H_ERRNO(&_res, NETDB_INTERNAL);
 		return (-1);
 	}
@@ -289,3 +289,5 @@ local_hostname_length(const char *hostname) {
 #endif /*ultrix*/
 
 #endif
+
+/*! \file */

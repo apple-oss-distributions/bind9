@@ -1,34 +1,34 @@
 #if defined(LIBC_SCCS) && !defined(lint)
-static const char rcsid[] = "$Id: hesiod.c,v 1.1.1.1 2003/01/10 00:48:14 bbraun Exp $";
+static const char rcsid[] = "$Id: hesiod.c,v 1.4.18.3 2005/07/28 07:38:08 marka Exp $";
 #endif
 
 /*
+ * Copyright (c) 2004 by Internet Systems Consortium, Inc. ("ISC")
  * Copyright (c) 1996,1999 by Internet Software Consortium.
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
  *
- * THE SOFTWARE IS PROVIDED "AS IS" AND INTERNET SOFTWARE CONSORTIUM DISCLAIMS
- * ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL INTERNET SOFTWARE
- * CONSORTIUM BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
- * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
- * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
- * ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
- * SOFTWARE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
+ * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-/*
- * This file is primarily maintained by <tytso@mit.edu> and <ghudson@mit.edu>.
- */
 
-/*
+/*! \file
+ * \brief
  * hesiod.c --- the core portion of the hesiod resolver.
  *
  * This file is derived from the hesiod library from Project Athena;
  * It has been extensively rewritten by Theodore Ts'o to have a more
  * thread-safe interface.
+ * \author
+ * This file is primarily maintained by &lt;tytso@mit.edu&gt; and &lt;ghudson@mit.edu&gt;.
  */
 
 /* Imports */
@@ -69,7 +69,7 @@ static int	init(struct hesiod_p *ctx);
 
 /* Public */
 
-/*
+/*%
  * This function is called to initialize a hesiod_p.
  */
 int
@@ -83,23 +83,21 @@ hesiod_init(void **context) {
 		return (-1);
 	}
 
-	ctx->LHS = NULL;
-	ctx->RHS = NULL;
-	ctx->res = NULL;
+	memset(ctx, 0, sizeof (*ctx));
 
 	if (parse_config_file(ctx, _PATH_HESIOD_CONF) < 0) {
 #ifdef DEF_RHS
 		/*
 		 * Use compiled in defaults.
 		 */
-		ctx->LHS = malloc(strlen(DEF_LHS)+1);
-		ctx->RHS = malloc(strlen(DEF_RHS)+1);
-		if (ctx->LHS == 0 || ctx->RHS == 0) {
+		ctx->LHS = malloc(strlen(DEF_LHS) + 1);
+		ctx->RHS = malloc(strlen(DEF_RHS) + 1);
+		if (ctx->LHS == NULL || ctx->RHS == NULL) {
 			errno = ENOMEM;
 			goto cleanup;
 		}
-		strcpy(ctx->LHS, DEF_LHS);
-		strcpy(ctx->RHS, DEF_RHS);
+		strcpy(ctx->LHS, DEF_LHS);	/* (checked) */
+		strcpy(ctx->RHS, DEF_RHS);	/* (checked) */
 #else
 		goto cleanup;
 #endif
@@ -109,18 +107,19 @@ hesiod_init(void **context) {
 	 * variable.
 	 */
 	if ((cp = getenv("HES_DOMAIN")) != NULL) {
+		size_t RHSlen = strlen(cp) + 2;
 		if (ctx->RHS)
 			free(ctx->RHS);
-		ctx->RHS = malloc(strlen(cp)+2);
+		ctx->RHS = malloc(RHSlen);
 		if (!ctx->RHS) {
 			errno = ENOMEM;
 			goto cleanup;
 		}
-		if (cp[0] == '.')
-			strcpy(ctx->RHS, cp);
-		else {
-			strcpy(ctx->RHS, ".");
-			strcat(ctx->RHS, cp);
+		if (cp[0] == '.') {
+			strcpy(ctx->RHS, cp);	/* (checked) */
+		} else {
+			strcpy(ctx->RHS, ".");	/* (checked) */
+			strcat(ctx->RHS, cp);	/* (checked) */
 		}
 	}
 
@@ -146,7 +145,7 @@ hesiod_init(void **context) {
 	return (-1);
 }
 
-/*
+/*%
  * This function deallocates the hesiod_p
  */
 void
@@ -166,7 +165,7 @@ hesiod_end(void *context) {
 	errno = save_errno;
 }
 
-/*
+/*%
  * This function takes a hesiod (name, type) and returns a DNS
  * name which is to be resolved.
  */
@@ -225,7 +224,7 @@ hesiod_to_bind(void *context, const char *name, const char *type) {
 	return (bindname);
 }
 
-/*
+/*%
  * This is the core function.  Given a hesiod (name, type), it
  * returns an array of strings returned by the resolver.
  */
@@ -266,7 +265,7 @@ hesiod_free_list(void *context, char **list) {
 	free(list);
 }
 
-/*
+/*%
  * This function parses the /etc/hesiod.conf file
  */
 static int
@@ -336,17 +335,17 @@ parse_config_file(struct hesiod_p *ctx, const char *filename) {
 	return (-1);
 }
 
-/*
+/*%
  * Given a DNS class and a DNS name, do a lookup for TXT records, and
  * return a list of them.
  */
 static char **
 get_txt_records(struct hesiod_p *ctx, int class, const char *name) {
 	struct {
-		int type;		/* RR type */
-		int class;		/* RR class */
-		int dlen;		/* len of data section */
-		u_char *data;		/* pointer to data */
+		int type;		/*%< RR type */
+		int class;		/*%< RR class */
+		int dlen;		/*%< len of data section */
+		u_char *data;		/*%< pointer to data */
 	} rr;
 	HEADER *hp;
 	u_char qbuf[MAX_HESRESP], abuf[MAX_HESRESP];
@@ -413,7 +412,7 @@ get_txt_records(struct hesiod_p *ctx, int class, const char *name) {
 		rr.type = ns_get16(cp);
 		cp += INT16SZ;
 		rr.class = ns_get16(cp);
-		cp += INT16SZ + INT32SZ;	/* skip the ttl, too */
+		cp += INT16SZ + INT32SZ;	/*%< skip the ttl, too */
 		rr.dlen = ns_get16(cp);
 		cp += INT16SZ;
 		if (cp + rr.dlen > eom) {
@@ -498,7 +497,7 @@ init(struct hesiod_p *ctx) {
 	if (!ctx->res && !__hesiod_res_get(ctx))
 		return (-1);
 
-	if (((ctx->res->options & RES_INIT) == 0) &&
+	if (((ctx->res->options & RES_INIT) == 0U) &&
 	    (res_ninit(ctx->res) == -1))
 		return (-1);
 

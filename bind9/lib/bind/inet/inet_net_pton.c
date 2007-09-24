@@ -1,22 +1,22 @@
 /*
+ * Copyright (c) 2004 by Internet Systems Consortium, Inc. ("ISC")
  * Copyright (c) 1996,1999 by Internet Software Consortium.
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
  *
- * THE SOFTWARE IS PROVIDED "AS IS" AND INTERNET SOFTWARE CONSORTIUM DISCLAIMS
- * ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL INTERNET SOFTWARE
- * CONSORTIUM BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
- * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
- * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
- * ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
- * SOFTWARE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
+ * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
 #if defined(LIBC_SCCS) && !defined(lint)
-static const char rcsid[] = "$Id: inet_net_pton.c,v 1.1.1.2 2003/03/18 19:18:31 rbraun Exp $";
+static const char rcsid[] = "$Id: inet_net_pton.c,v 1.7.18.1 2005/04/27 05:00:53 sra Exp $";
 #endif
 
 #include "port_before.h"
@@ -42,7 +42,7 @@ static const char rcsid[] = "$Id: inet_net_pton.c,v 1.1.1.2 2003/03/18 19:18:31 
 # define SPRINTF(x) ((size_t)sprintf x)
 #endif
 
-/*
+/*%
  * static int
  * inet_net_pton_ipv4(src, dst, size)
  *	convert IPv4 network number from presentation to network format.
@@ -59,7 +59,7 @@ static const char rcsid[] = "$Id: inet_net_pton.c,v 1.1.1.2 2003/03/18 19:18:31 
  *	Paul Vixie (ISC), June 1996
  */
 static int
-inet_net_pton_ipv4( const char *src, u_char *dst, size_t size) {
+inet_net_pton_ipv4(const char *src, u_char *dst, size_t size) {
 	static const char xdigits[] = "0123456789abcdef";
 	static const char digits[] = "0123456789";
 	int n, ch, tmp = 0, dirty, bits;
@@ -70,10 +70,10 @@ inet_net_pton_ipv4( const char *src, u_char *dst, size_t size) {
 	    && isascii((unsigned char)(src[1]))
 	    && isxdigit((unsigned char)(src[1]))) {
 		/* Hexadecimal: Eat nybble string. */
-		if (size <= 0)
+		if (size <= 0U)
 			goto emsgsize;
 		dirty = 0;
-		src++;	/* skip x or X. */
+		src++;	/*%< skip x or X. */
 		while ((ch = *src++) != '\0' && isascii(ch) && isxdigit(ch)) {
 			if (isupper(ch))
 				ch = tolower(ch);
@@ -84,14 +84,14 @@ inet_net_pton_ipv4( const char *src, u_char *dst, size_t size) {
 			else
 				tmp = (tmp << 4) | n;
 			if (++dirty == 2) {
-				if (size-- <= 0)
+				if (size-- <= 0U)
 					goto emsgsize;
 				*dst++ = (u_char) tmp;
 				dirty = 0;
 			}
 		}
-		if (dirty) {  /* Odd trailing nybble? */
-			if (size-- <= 0)
+		if (dirty) {  /*%< Odd trailing nybble? */
+			if (size-- <= 0U)
 				goto emsgsize;
 			*dst++ = (u_char) (tmp << 4);
 		}
@@ -108,7 +108,7 @@ inet_net_pton_ipv4( const char *src, u_char *dst, size_t size) {
 					goto enoent;
 			} while ((ch = *src++) != '\0' &&
 				 isascii(ch) && isdigit(ch));
-			if (size-- <= 0)
+			if (size-- <= 0U)
 				goto emsgsize;
 			*dst++ = (u_char) tmp;
 			if (ch == '\0' || ch == '/')
@@ -126,7 +126,7 @@ inet_net_pton_ipv4( const char *src, u_char *dst, size_t size) {
 	if (ch == '/' && isascii((unsigned char)(src[0])) &&
 	    isdigit((unsigned char)(src[0])) && dst > odst) {
 		/* CIDR width specifier.  Nothing can follow it. */
-		ch = *src++;	/* Skip over the /. */
+		ch = *src++;	/*%< Skip over the /. */
 		bits = 0;
 		do {
 			n = strchr(digits, ch) - digits;
@@ -149,23 +149,29 @@ inet_net_pton_ipv4( const char *src, u_char *dst, size_t size) {
 		goto enoent;
 	/* If no CIDR spec was given, infer width from net class. */
 	if (bits == -1) {
-		if (*odst >= 240)	/* Class E */
+		if (*odst >= 240)	/*%< Class E */
 			bits = 32;
-		else if (*odst >= 224)	/* Class D */
-			bits = 4;
-		else if (*odst >= 192)	/* Class C */
+		else if (*odst >= 224)	/*%< Class D */
+			bits = 8;
+		else if (*odst >= 192)	/*%< Class C */
 			bits = 24;
-		else if (*odst >= 128)	/* Class B */
+		else if (*odst >= 128)	/*%< Class B */
 			bits = 16;
-		else			/* Class A */
+		else			/*%< Class A */
 			bits = 8;
 		/* If imputed mask is narrower than specified octets, widen. */
-		if (bits >= 8 && bits < ((dst - odst) * 8))
+		if (bits < ((dst - odst) * 8))
 			bits = (dst - odst) * 8;
+		/*
+		 * If there are no additional bits specified for a class D
+		 * address adjust bits to 4.
+		 */
+		if (bits == 8 && *odst == 224)
+			bits = 4;
 	}
 	/* Extend network to cover the actual mask. */
 	while (bits > ((dst - odst) * 8)) {
-		if (size-- <= 0)
+		if (size-- <= 0U)
 			goto emsgsize;
 		*dst++ = '\0';
 	}
@@ -194,11 +200,11 @@ getbits(const char *src, int *bitsp) {
 
 		pch = strchr(digits, ch);
 		if (pch != NULL) {
-			if (n++ != 0 && val == 0)	/* no leading zeros */
+			if (n++ != 0 && val == 0)	/*%< no leading zeros */
 				return (0);
 			val *= 10;
 			val += (pch - digits);
-			if (val > 128)			/* range */
+			if (val > 128)			/*%< range */
 				return (0);
 			continue;
 		}
@@ -225,16 +231,16 @@ getv4(const char *src, u_char *dst, int *bitsp) {
 
 		pch = strchr(digits, ch);
 		if (pch != NULL) {
-			if (n++ != 0 && val == 0)	/* no leading zeros */
+			if (n++ != 0 && val == 0)	/*%< no leading zeros */
 				return (0);
 			val *= 10;
 			val += (pch - digits);
-			if (val > 255)			/* range */
+			if (val > 255)			/*%< range */
 				return (0);
 			continue;
 		}
 		if (ch == '.' || ch == '/') {
-			if (dst - odst > 3)		/* too many octets? */
+			if (dst - odst > 3)		/*%< too many octets? */
 				return (0);
 			*dst++ = val;
 			if (ch == '/')
@@ -247,7 +253,7 @@ getv4(const char *src, u_char *dst, int *bitsp) {
 	}
 	if (n == 0)
 		return (0);
-	if (dst - odst > 3)		/* too many octets? */
+	if (dst - odst > 3)		/*%< too many octets? */
 		return (0);
 	*dst++ = val;
 	return (1);
@@ -316,7 +322,7 @@ inet_net_pton_ipv6(const char *src, u_char *dst, size_t size) {
 			tp += NS_INADDRSZ;
 			saw_xdigit = 0;
 			ipv4 = 1;
-			break;	/* '\0' was seen by inet_pton4(). */
+			break;	/*%< '\\0' was seen by inet_pton4(). */
 		}
 		if (ch == '/' && getbits(src, &bits) > 0)
 			break;
@@ -372,7 +378,7 @@ inet_net_pton_ipv6(const char *src, u_char *dst, size_t size) {
 	return (-1);
 }
 
-/*
+/*%
  * int
  * inet_net_pton(af, src, dst, size)
  *	convert network number from presentation to network format.
@@ -397,3 +403,5 @@ inet_net_pton(int af, const char *src, void *dst, size_t size) {
 		return (-1);
 	}
 }
+
+/*! \file */

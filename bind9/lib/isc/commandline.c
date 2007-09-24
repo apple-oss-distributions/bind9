@@ -1,18 +1,18 @@
 /*
+ * Portions Copyright (C) 2004, 2005  Internet Systems Consortium, Inc. ("ISC")
  * Portions Copyright (C) 1999-2001  Internet Software Consortium.
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
  *
- * THE SOFTWARE IS PROVIDED "AS IS" AND INTERNET SOFTWARE CONSORTIUM
- * DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL
- * INTERNET SOFTWARE CONSORTIUM BE LIABLE FOR ANY SPECIAL, DIRECT,
- * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING
- * FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
- * NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION
- * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
+ * REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
+ * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+ * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
+ * OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
  */
 
 /*
@@ -48,9 +48,9 @@
  * SUCH DAMAGE.
  */
 
-/* $Id: commandline.c,v 1.1.1.1 2003/01/10 00:48:39 bbraun Exp $ */
+/* $Id: commandline.c,v 1.16.18.2 2005/04/29 00:16:45 marka Exp $ */
 
-/*
+/*! \file
  * This file was adapted from the NetBSD project's source tree, RCS ID:
  *    NetBSD: getopt.c,v 1.15 1999/09/20 04:39:37 lukem Exp
  *
@@ -59,8 +59,8 @@
  */
 
 /*
- * Principal Authors: Computer Systems Research Group at UC Berkeley
- * Principal ISC caretaker: DCL
+ * \author Principal Authors: Computer Systems Research Group at UC Berkeley
+ * \author Principal ISC caretaker: DCL
  */
 
 #include <config.h>
@@ -72,17 +72,17 @@
 #include <isc/string.h>
 #include <isc/util.h>
 
-/* Index into parent argv vector. */
+/*% Index into parent argv vector. */
 LIBISC_EXTERNAL_DATA int isc_commandline_index = 1;
-/* Character checked for validity. */
+/*% Character checked for validity. */
 LIBISC_EXTERNAL_DATA int isc_commandline_option;
-/* Argument associated with option. */
+/*% Argument associated with option. */
 LIBISC_EXTERNAL_DATA char *isc_commandline_argument;
-/* For printing error messages. */
+/*% For printing error messages. */
 LIBISC_EXTERNAL_DATA char *isc_commandline_progname;
-/* Print error messages. */
+/*% Print error messages. */
 LIBISC_EXTERNAL_DATA isc_boolean_t isc_commandline_errprint = ISC_TRUE;
-/* Reset processing. */
+/*% Reset processing. */
 LIBISC_EXTERNAL_DATA isc_boolean_t isc_commandline_reset = ISC_TRUE;
 
 static char endopt = '\0';
@@ -91,7 +91,7 @@ static char endopt = '\0';
 #define	BADARG	':'
 #define ENDOPT  &endopt
 
-/*
+/*!
  * getopt --
  *	Parse argc/argv argument vector.
  */

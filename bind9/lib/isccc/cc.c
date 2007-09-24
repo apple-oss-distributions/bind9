@@ -1,35 +1,39 @@
 /*
- * Portions Copyright (C) 2001, 2002  Internet Software Consortium.
- * Portions Copyright (C) 2001, 2002  Nominum, Inc.
+ * Portions Copyright (C) 2004-2006  Internet Systems Consortium, Inc. ("ISC")
+ * Portions Copyright (C) 2001-2003  Internet Software Consortium.
+ * Portions Copyright (C) 2001  Nominum, Inc.
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
  *
- * THE SOFTWARE IS PROVIDED "AS IS" AND INTERNET SOFTWARE CONSORTIUM AND
- * NOMINUM DISCLAIM ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING
- * ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT
- * SHALL INTERNET SOFTWARE CONSORTIUM OR NOMINUM BE LIABLE FOR ANY
+ * THE SOFTWARE IS PROVIDED "AS IS" AND ISC AND NOMINUM DISCLAIMS ALL
+ * WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY
  * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
- * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
- * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-/* $Id: cc.c,v 1.1.1.1 2003/01/10 00:48:44 bbraun Exp $ */
+/* $Id: cc.c,v 1.10.18.5 2006/12/07 23:57:58 marka Exp $ */
+
+/*! \file */
 
 #include <config.h>
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 
-#include <isccc/alist.h>
 #include <isc/assertions.h>
+#include <isc/hmacmd5.h>
+#include <isc/print.h>
+#include <isc/stdlib.h>
+
+#include <isccc/alist.h>
 #include <isccc/base64.h>
 #include <isccc/cc.h>
-#include <isc/hmacmd5.h>
 #include <isccc/result.h>
 #include <isccc/sexpr.h>
 #include <isccc/symtab.h>
@@ -42,12 +46,12 @@
 typedef isccc_sexpr_t *sexpr_ptr;
 
 static unsigned char auth_hmd5[] = {
-	0x05, 0x5f, 0x61, 0x75, 0x74, 0x68,		/* len + _auth */
-	ISCCC_CCMSGTYPE_TABLE,				/* message type */
-	0x00, 0x00, 0x00, 0x20,				/* length == 32 */
-	0x04, 0x68, 0x6d, 0x64, 0x35,			/* len + hmd5 */
-	ISCCC_CCMSGTYPE_BINARYDATA,			/* message type */
-	0x00, 0x00, 0x00, 0x16,				/* length == 22 */
+	0x05, 0x5f, 0x61, 0x75, 0x74, 0x68,		/*%< len + _auth */
+	ISCCC_CCMSGTYPE_TABLE,				/*%< message type */
+	0x00, 0x00, 0x00, 0x20,				/*%< length == 32 */
+	0x04, 0x68, 0x6d, 0x64, 0x35,			/*%< len + hmd5 */
+	ISCCC_CCMSGTYPE_BINARYDATA,			/*%< message type */
+	0x00, 0x00, 0x00, 0x16,				/*%< length == 22 */
 	/*
 	 * The base64 encoding of one of our HMAC-MD5 signatures is
 	 * 22 bytes.
@@ -57,7 +61,7 @@ static unsigned char auth_hmd5[] = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-#define HMD5_OFFSET	21		/* 6 + 1 + 4 + 5 + 1 + 4 */
+#define HMD5_OFFSET	21		/*%< 21 = 6 + 1 + 4 + 5 + 1 + 4 */
 #define HMD5_LENGTH	22
 
 static isc_result_t
@@ -105,7 +109,7 @@ value_towire(isccc_sexpr_t *elt, isccc_region_t *target)
 		 * the placeholder length too.  Adjust and
 		 * emit.
 		 */
-		INSIST(len >= 4);
+		INSIST(len >= 4U);
 		len -= 4;
 		PUT32(len, lenp);
 	} else if (isccc_sexpr_listp(elt)) {
@@ -128,7 +132,7 @@ value_towire(isccc_sexpr_t *elt, isccc_region_t *target)
 		 * 'len' is 4 bytes too big, since it counts
 		 * the placeholder length.  Adjust and emit.
 		 */
-		INSIST(len >= 4);
+		INSIST(len >= 4U);
 		len -= 4;
 		PUT32(len, lenp);
 	}
@@ -152,7 +156,7 @@ table_towire(isccc_sexpr_t *alist, isccc_region_t *target)
 		ks = isccc_sexpr_tostring(k);
 		v = ISCCC_SEXPR_CDR(kv);
 		len = strlen(ks);
-		INSIST(len <= 255);
+		INSIST(len <= 255U);
 		/*
 		 * Emit the key name.
 		 */
@@ -218,7 +222,7 @@ isccc_cc_towire(isccc_sexpr_t *alist, isccc_region_t *target,
 	unsigned char *hmd5_rstart, *signed_rstart;
 	isc_result_t result;
 
-	if (REGION_SIZE(*target) < 4 + sizeof auth_hmd5)
+	if (REGION_SIZE(*target) < 4 + sizeof(auth_hmd5))
 		return (ISC_R_NOSPACE);
 	/*
 	 * Emit protocol version.
@@ -231,7 +235,7 @@ isccc_cc_towire(isccc_sexpr_t *alist, isccc_region_t *target,
 		 * we know what it is.
 		 */
 		hmd5_rstart = target->rstart + HMD5_OFFSET;
-		PUT_MEM(auth_hmd5, sizeof auth_hmd5, target->rstart);
+		PUT_MEM(auth_hmd5, sizeof(auth_hmd5), target->rstart);
 	} else
 		hmd5_rstart = NULL;
 	signed_rstart = target->rstart;
@@ -464,12 +468,21 @@ createmessage(isc_uint32_t version, const char *from, const char *to,
 	result = ISC_R_NOMEMORY;
 
 	_ctrl = isccc_alist_create();
+	if (_ctrl == NULL)
+		goto bad;
+	if (isccc_alist_define(alist, "_ctrl", _ctrl) == NULL) {
+		isccc_sexpr_free(&_ctrl);
+		goto bad;
+	}
+
 	_data = isccc_alist_create();
-	if (_ctrl == NULL || _data == NULL)
+	if (_data == NULL)
 		goto bad;
-	if (isccc_alist_define(alist, "_ctrl", _ctrl) == NULL ||
-	    isccc_alist_define(alist, "_data", _data) == NULL)
+	if (isccc_alist_define(alist, "_data", _data) == NULL) {
+		isccc_sexpr_free(&_data);
 		goto bad;
+	}
+
 	if (isccc_cc_defineuint32(_ctrl, "_ser", serial) == NULL ||
 	    isccc_cc_defineuint32(_ctrl, "_tim", now) == NULL ||
 	    (want_expires &&
@@ -647,7 +660,7 @@ isccc_cc_defineuint32(isccc_sexpr_t *alist, const char *key, isc_uint32_t i)
 	size_t len;
 	isccc_region_t r;
 
-	sprintf(b, "%u", i);
+	snprintf(b, sizeof(b), "%u", i);
 	len = strlen(b);
 	r.rstart = (unsigned char *)b;
 	r.rend = (unsigned char *)b + len;
@@ -792,7 +805,7 @@ isccc_cc_checkdup(isccc_symtab_t *symtab, isccc_sexpr_t *message,
 	key = malloc(len);
 	if (key == NULL)
 		return (ISC_R_NOMEMORY);
-	sprintf(key, "%s;%s;%s;%s", _frm, _to, _ser, _tim);
+	snprintf(key, len, "%s;%s;%s;%s", _frm, _to, _ser, _tim);
 	value.as_uinteger = now;
 	result = isccc_symtab_define(symtab, key, ISCCC_SYMTYPE_CCDUP, value,
 				   isccc_symexists_reject);

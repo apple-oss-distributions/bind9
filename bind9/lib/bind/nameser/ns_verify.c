@@ -1,22 +1,22 @@
 /*
+ * Copyright (c) 2004 by Internet Systems Consortium, Inc. ("ISC")
  * Copyright (c) 1999 by Internet Software Consortium, Inc.
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
  *
- * THE SOFTWARE IS PROVIDED "AS IS" AND INTERNET SOFTWARE CONSORTIUM DISCLAIMS
- * ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL INTERNET SOFTWARE
- * CONSORTIUM BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
- * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
- * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
- * ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
- * SOFTWARE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
+ * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
 #ifndef lint
-static const char rcsid[] = "$Id: ns_verify.c,v 1.1.1.1 2003/01/10 00:48:16 bbraun Exp $";
+static const char rcsid[] = "$Id: ns_verify.c,v 1.2.18.3 2006/03/10 00:20:08 marka Exp $";
 #endif
 
 /* Import. */
@@ -107,28 +107,29 @@ ns_find_tsig(u_char *msg, u_char *eom) {
 }
 
 /* ns_verify
+ *
  * Parameters:
- *	statp		res stuff
- *	msg		received message
- *	msglen		length of message
- *	key		tsig key used for verifying.
- *	querysig	(response), the signature in the query
- *	querysiglen	(response), the length of the signature in the query
- *	sig		(query), a buffer to hold the signature
- *	siglen		(query), input - length of signature buffer
+ *\li	statp		res stuff
+ *\li	msg		received message
+ *\li	msglen		length of message
+ *\li	key		tsig key used for verifying.
+ *\li	querysig	(response), the signature in the query
+ *\li	querysiglen	(response), the length of the signature in the query
+ *\li	sig		(query), a buffer to hold the signature
+ *\li	siglen		(query), input - length of signature buffer
  *				 output - length of signature
  *
  * Errors:
- *	- bad input (-1)
- *	- invalid dns message (NS_TSIG_ERROR_FORMERR)
- *	- TSIG is not present (NS_TSIG_ERROR_NO_TSIG)
- *	- key doesn't match (-ns_r_badkey)
- *	- TSIG verification fails with BADKEY (-ns_r_badkey)
- *	- TSIG verification fails with BADSIG (-ns_r_badsig)
- *	- TSIG verification fails with BADTIME (-ns_r_badtime)
- *	- TSIG verification succeeds, error set to BAKEY (ns_r_badkey)
- *	- TSIG verification succeeds, error set to BADSIG (ns_r_badsig)
- *	- TSIG verification succeeds, error set to BADTIME (ns_r_badtime)
+ *\li	- bad input (-1)
+ *\li	- invalid dns message (NS_TSIG_ERROR_FORMERR)
+ *\li	- TSIG is not present (NS_TSIG_ERROR_NO_TSIG)
+ *\li	- key doesn't match (-ns_r_badkey)
+ *\li	- TSIG verification fails with BADKEY (-ns_r_badkey)
+ *\li	- TSIG verification fails with BADSIG (-ns_r_badsig)
+ *\li	- TSIG verification fails with BADTIME (-ns_r_badtime)
+ *\li	- TSIG verification succeeds, error set to BAKEY (ns_r_badkey)
+ *\li	- TSIG verification succeeds, error set to BADSIG (ns_r_badsig)
+ *\li	- TSIG verification succeeds, error set to BADTIME (ns_r_badtime)
  */
 int
 ns_verify(u_char *msg, int *msglen, void *k,
@@ -144,7 +145,7 @@ ns_verify(u_char *msg, int *msglen, void *k,
 	int n;
 	int error;
 	u_int16_t type, length;
-	u_int16_t fudge, sigfieldlen, id, otherfieldlen;
+	u_int16_t fudge, sigfieldlen, otherfieldlen;
 
 	dst_init();
 	if (msg == NULL || msglen == NULL || *msglen < 0)
@@ -198,9 +199,9 @@ ns_verify(u_char *msg, int *msglen, void *k,
 	sigstart = cp;
 	cp += sigfieldlen;
 
-	/* Read the original id and error. */
+	/* Skip id and read error. */
 	BOUNDS_CHECK(cp, 2*INT16SZ);
-	GETSHORT(id, cp);
+	cp += INT16SZ;
 	GETSHORT(error, cp);
 
 	/* Parse the other data. */
@@ -341,16 +342,18 @@ ns_verify_tcp(u_char *msg, int *msglen, ns_tcp_tsig_state *state,
 	      int required)
 {
 	HEADER *hp = (HEADER *)msg;
-	u_char *recstart, *rdatastart, *sigstart;
+	u_char *recstart, *sigstart;
 	unsigned int sigfieldlen, otherfieldlen;
-	u_char *cp, *eom = msg + *msglen, *cp2;
+	u_char *cp, *eom, *cp2;
 	char name[MAXDNAME], alg[MAXDNAME];
 	u_char buf[MAXDNAME];
-	int n, type, length, fudge, id, error;
+	int n, type, length, fudge, error;
 	time_t timesigned;
 
 	if (msg == NULL || msglen == NULL || state == NULL)
 		return (-1);
+
+	eom = msg + *msglen;
 
 	state->counter++;
 	if (state->counter == 0)
@@ -403,7 +406,6 @@ ns_verify_tcp(u_char *msg, int *msglen, ns_tcp_tsig_state *state,
 		return (NS_TSIG_ERROR_FORMERR);
 
 	/* Read the algorithm name. */
-	rdatastart = cp;
 	n = dn_expand(msg, eom, cp, alg, MAXDNAME);
 	if (n < 0)
 		return (NS_TSIG_ERROR_FORMERR);
@@ -429,9 +431,9 @@ ns_verify_tcp(u_char *msg, int *msglen, ns_tcp_tsig_state *state,
 	sigstart = cp;
 	cp += sigfieldlen;
 
-	/* Read the original id and error. */
+	/* Skip id and read error. */
 	BOUNDS_CHECK(cp, 2*INT16SZ);
-	GETSHORT(id, cp);
+	cp += INT16SZ;
 	GETSHORT(error, cp);
 
 	/* Parse the other data. */
@@ -449,7 +451,7 @@ ns_verify_tcp(u_char *msg, int *msglen, ns_tcp_tsig_state *state,
 
 	/* Digest the time signed and fudge. */
 	cp2 = buf;
-	PUTSHORT(0, cp2);       /* Top 16 bits of time. */
+	PUTSHORT(0, cp2);       /*%< Top 16 bits of time. */
 	PUTLONG(timesigned, cp2);
 	PUTSHORT(NS_TSIG_FUDGE, cp2);
 
@@ -478,3 +480,5 @@ ns_verify_tcp(u_char *msg, int *msglen, ns_tcp_tsig_state *state,
 
 	return (0);
 }
+
+/*! \file */

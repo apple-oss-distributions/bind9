@@ -1,21 +1,23 @@
 /*
- * Copyright (C) 1998-2001  Internet Software Consortium.
+ * Copyright (C) 2004, 2005  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1998-2001, 2003  Internet Software Consortium.
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
  *
- * THE SOFTWARE IS PROVIDED "AS IS" AND INTERNET SOFTWARE CONSORTIUM
- * DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL
- * INTERNET SOFTWARE CONSORTIUM BE LIABLE FOR ANY SPECIAL, DIRECT,
- * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING
- * FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
- * NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION
- * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
+ * REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
+ * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+ * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
+ * OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
  */
 
-/* $Id: base64.c,v 1.1.1.1 2003/01/10 00:48:38 bbraun Exp $ */
+/* $Id: base64.c,v 1.28.18.2 2005/04/29 00:16:44 marka Exp $ */
+
+/*! \file */
 
 #include <config.h>
 
@@ -32,7 +34,8 @@
 	} while (0)
 
 
-/*
+/*@{*/
+/*!
  * These static functions are also present in lib/dns/rdata.c.  I'm not
  * sure where they should go. -- bwelling
  */
@@ -44,6 +47,7 @@ mem_tobuffer(isc_buffer_t *target, void *base, unsigned int length);
 
 static const char base64[] =
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+/*@}*/
 
 isc_result_t
 isc_base64_totext(isc_region_t *source, int wordlength,
@@ -55,7 +59,7 @@ isc_base64_totext(isc_region_t *source, int wordlength,
 	if (wordlength < 4)
 		wordlength = 4;
 
-	memset(buf, 0, sizeof buf);
+	memset(buf, 0, sizeof(buf));
 	while (source->length > 2) {
 		buf[0] = base64[(source->base[0]>>2)&0x3f];
 		buf[1] = base64[((source->base[0]<<4)&0x30)|
@@ -90,14 +94,14 @@ isc_base64_totext(isc_region_t *source, int wordlength,
 	return (ISC_R_SUCCESS);
 }
 
-/*
+/*%
  * State of a base64 decoding process in progress.
  */
 typedef struct {
-	int length;		/* Desired length of binary data or -1 */
-	isc_buffer_t *target;	/* Buffer for resulting binary data */
-	int digits;		/* Number of buffered base64 digits */
-	isc_boolean_t seen_end;	/* True if "=" end marker seen */
+	int length;		/*%< Desired length of binary data or -1 */
+	isc_buffer_t *target;	/*%< Buffer for resulting binary data */
+	int digits;		/*%< Number of buffered base64 digits */
+	isc_boolean_t seen_end;	/*%< True if "=" end marker seen */
 	int val[4];
 } base64_decode_ctx_t;
 
@@ -125,6 +129,17 @@ base64_decode_char(base64_decode_ctx_t *ctx, int c) {
 		if (ctx->val[0] == 64 || ctx->val[1] == 64)
 			return (ISC_R_BADBASE64);
 		if (ctx->val[2] == 64 && ctx->val[3] != 64)
+			return (ISC_R_BADBASE64);
+		/*
+		 * Check that bits that should be zero are.
+		 */
+		if (ctx->val[2] == 64 && (ctx->val[1] & 0xf) != 0)
+			return (ISC_R_BADBASE64);
+		/*
+		 * We don't need to test for ctx->val[2] != 64 as
+		 * the bottom two bits of 64 are zero.
+		 */
+		if (ctx->val[3] == 64 && (ctx->val[2] & 0x3) != 0)
 			return (ISC_R_BADBASE64);
 		n = (ctx->val[2] == 64) ? 1 :
 			(ctx->val[3] == 64) ? 2 : 3;
@@ -180,7 +195,7 @@ isc_base64_tobuffer(isc_lex_t *lexer, isc_buffer_t *target, int length) {
 		if (token.type != isc_tokentype_string)
 			break;
 		tr = &token.value.as_textregion;
-		for (i = 0 ;i < tr->length; i++)
+		for (i = 0; i < tr->length; i++)
 			RETERR(base64_decode_char(&ctx, tr->base[i]));
 	}
 	if (ctx.length < 0 && !ctx.seen_end)

@@ -1,21 +1,23 @@
 /*
- * Copyright (C) 1998-2001  Internet Software Consortium.
+ * Copyright (C) 2004, 2005  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1998-2001, 2003  Internet Software Consortium.
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
  *
- * THE SOFTWARE IS PROVIDED "AS IS" AND INTERNET SOFTWARE CONSORTIUM
- * DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL
- * INTERNET SOFTWARE CONSORTIUM BE LIABLE FOR ANY SPECIAL, DIRECT,
- * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING
- * FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
- * NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION
- * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
+ * REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
+ * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+ * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
+ * OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
  */
 
-/* $Id: time.c,v 1.1.1.1 2003/01/10 00:48:42 bbraun Exp $ */
+/* $Id: time.c,v 1.47.18.2 2005/04/29 00:17:09 marka Exp $ */
+
+/*! \file */
 
 #include <config.h>
 
@@ -33,9 +35,9 @@
 #include <isc/time.h>
 #include <isc/util.h>
 
-#define NS_PER_S	1000000000	/* Nanoseconds per second. */
-#define NS_PER_US	1000		/* Nanoseconds per microsecond. */
-#define US_PER_S	1000000		/* Microseconds per second. */
+#define NS_PER_S	1000000000	/*%< Nanoseconds per second. */
+#define NS_PER_US	1000		/*%< Nanoseconds per microsecond. */
+#define US_PER_S	1000000		/*%< Microseconds per second. */
 
 /*
  * All of the INSIST()s checks of nanoseconds < NS_PER_S are for
@@ -48,7 +50,7 @@
 #define ISC_FIX_TV_USEC 1
 #endif
 
-/***
+/*%
  *** Intervals
  ***/
 
@@ -77,7 +79,7 @@ fix_tv_usec(struct timeval *tv) {
 	 * Call syslog directly as was are called from the logging functions.
 	 */
 	if (fixed)
-		syslog(LOG_ERR, "gettimeofday returned bad tv_usec: corrected");
+		(void)syslog(LOG_ERR, "gettimeofday returned bad tv_usec: corrected");
 }
 #endif
 
@@ -93,7 +95,7 @@ isc_interval_set(isc_interval_t *i,
 }
 
 isc_boolean_t
-isc_interval_iszero(isc_interval_t *i) {
+isc_interval_iszero(const isc_interval_t *i) {
 	REQUIRE(i != NULL);
 	INSIST(i->nanoseconds < NS_PER_S);
 
@@ -129,7 +131,7 @@ isc_time_settoepoch(isc_time_t *t) {
 }
 
 isc_boolean_t
-isc_time_isepoch(isc_time_t *t) {
+isc_time_isepoch(const isc_time_t *t) {
 	REQUIRE(t != NULL);
 	INSIST(t->nanoseconds < NS_PER_S);
 
@@ -173,7 +175,7 @@ isc_time_now(isc_time_t *t) {
 	 * Ensure the tv_sec value fits in t->seconds.
 	 */
 	if (sizeof(tv.tv_sec) > sizeof(t->seconds) &&
-	    ((tv.tv_sec | (unsigned int)-1) ^ (unsigned int)-1) != 0)
+	    ((tv.tv_sec | (unsigned int)-1) ^ (unsigned int)-1) != 0U)
 		return (ISC_R_RANGE);
 
 	t->seconds = tv.tv_sec;
@@ -183,7 +185,7 @@ isc_time_now(isc_time_t *t) {
 }
 
 isc_result_t
-isc_time_nowplusinterval(isc_time_t *t, isc_interval_t *i) {
+isc_time_nowplusinterval(isc_time_t *t, const isc_interval_t *i) {
 	struct timeval tv;
 	char strbuf[ISC_STRERRORSIZE];
 
@@ -234,7 +236,7 @@ isc_time_nowplusinterval(isc_time_t *t, isc_interval_t *i) {
 }
 
 int
-isc_time_compare(isc_time_t *t1, isc_time_t *t2) {
+isc_time_compare(const isc_time_t *t1, const isc_time_t *t2) {
 	REQUIRE(t1 != NULL && t2 != NULL);
 	INSIST(t1->nanoseconds < NS_PER_S && t2->nanoseconds < NS_PER_S);
 
@@ -250,7 +252,8 @@ isc_time_compare(isc_time_t *t1, isc_time_t *t2) {
 }
 
 isc_result_t
-isc_time_add(isc_time_t *t, isc_interval_t *i, isc_time_t *result) {
+isc_time_add(const isc_time_t *t, const isc_interval_t *i, isc_time_t *result)
+{
 	REQUIRE(t != NULL && i != NULL && result != NULL);
 	INSIST(t->nanoseconds < NS_PER_S && i->nanoseconds < NS_PER_S);
 
@@ -275,7 +278,9 @@ isc_time_add(isc_time_t *t, isc_interval_t *i, isc_time_t *result) {
 }
 
 isc_result_t
-isc_time_subtract(isc_time_t *t, isc_interval_t *i, isc_time_t *result) {
+isc_time_subtract(const isc_time_t *t, const isc_interval_t *i,
+		  isc_time_t *result)
+{
 	REQUIRE(t != NULL && i != NULL && result != NULL);
 	INSIST(t->nanoseconds < NS_PER_S && i->nanoseconds < NS_PER_S);
 
@@ -297,7 +302,7 @@ isc_time_subtract(isc_time_t *t, isc_interval_t *i, isc_time_t *result) {
 }
 
 isc_uint64_t
-isc_time_microdiff(isc_time_t *t1, isc_time_t *t2) {
+isc_time_microdiff(const isc_time_t *t1, const isc_time_t *t2) {
 	isc_uint64_t i1, i2, i3;
 
 	REQUIRE(t1 != NULL && t2 != NULL);
@@ -320,7 +325,7 @@ isc_time_microdiff(isc_time_t *t1, isc_time_t *t2) {
 }
 
 isc_uint32_t
-isc_time_seconds(isc_time_t *t) {
+isc_time_seconds(const isc_time_t *t) {
 	REQUIRE(t != NULL);
 	INSIST(t->nanoseconds < NS_PER_S);
 
@@ -328,7 +333,7 @@ isc_time_seconds(isc_time_t *t) {
 }
 
 isc_result_t
-isc_time_secondsastimet(isc_time_t *t, time_t *secondsp) {
+isc_time_secondsastimet(const isc_time_t *t, time_t *secondsp) {
 	isc_uint64_t i;
 	time_t seconds;
 
@@ -366,7 +371,7 @@ isc_time_secondsastimet(isc_time_t *t, time_t *secondsp) {
 	    (time_t)0.5 != 0.5 &&	       /* Not a floating point type. */
 	    (i = (time_t)-1) != 4294967295u &&		       /* Is signed. */
 	    (seconds &
-	     (1U << (sizeof(time_t) * CHAR_BIT - 1))) != 0) {   /* Negative. */
+	     (1U << (sizeof(time_t) * CHAR_BIT - 1))) != 0U) {   /* Negative. */
 		/*
 		 * This UNUSED() is here to shut up the IRIX compiler:
 		 *	variable "i" was set but never used
@@ -383,7 +388,7 @@ isc_time_secondsastimet(isc_time_t *t, time_t *secondsp) {
 }
 
 isc_uint32_t
-isc_time_nanoseconds(isc_time_t *t) {
+isc_time_nanoseconds(const isc_time_t *t) {
 	REQUIRE(t != NULL);
 
 	ENSURE(t->nanoseconds < NS_PER_S);
@@ -399,11 +404,11 @@ isc_time_formattimestamp(const isc_time_t *t, char *buf, unsigned int len) {
 	REQUIRE(len > 0);
 
 	now = (time_t) t->seconds;
-	flen = strftime(buf, len, "%b %d %X", localtime(&now));
+	flen = strftime(buf, len, "%d-%b-%Y %X", localtime(&now));
 	INSIST(flen < len);
 	if (flen != 0)
 		snprintf(buf + flen, len - flen,
 			 ".%03u", t->nanoseconds / 1000000);
 	else
-                snprintf(buf, len, "Bad 00 99:99:99.999");
+                snprintf(buf, len, "99-Bad-9999 99:99:99.999");
 }

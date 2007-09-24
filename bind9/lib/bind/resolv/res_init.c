@@ -52,25 +52,25 @@
  */
 
 /*
+ * Copyright (c) 2004 by Internet Systems Consortium, Inc. ("ISC")
  * Portions Copyright (c) 1996-1999 by Internet Software Consortium.
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
  *
- * THE SOFTWARE IS PROVIDED "AS IS" AND INTERNET SOFTWARE CONSORTIUM DISCLAIMS
- * ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL INTERNET SOFTWARE
- * CONSORTIUM BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
- * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
- * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
- * ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
- * SOFTWARE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
+ * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
 #if defined(LIBC_SCCS) && !defined(lint)
 static const char sccsid[] = "@(#)res_init.c	8.1 (Berkeley) 6/7/93";
-static const char rcsid[] = "$Id: res_init.c,v 1.1.1.2 2003/03/18 19:18:35 rbraun Exp $";
+static const char rcsid[] = "$Id: res_init.c,v 1.16.18.5 2006/08/30 23:23:13 marka Exp $";
 #endif /* LIBC_SCCS and not lint */
 
 #include "port_before.h"
@@ -98,9 +98,13 @@ static const char rcsid[] = "$Id: res_init.c,v 1.1.1.2 2003/03/18 19:18:35 rbrau
 
 #include "res_private.h"
 
-/* Options.  Should all be left alone. */
+/*% Options.  Should all be left alone. */
 #define RESOLVSORT
 #define DEBUG
+
+#ifdef SOLARIS2
+#include <sys/systeminfo.h>
+#endif
 
 static void res_setoptions __P((res_state, const char *, const char *));
 
@@ -110,7 +114,7 @@ static const char sort_mask[] = "/&";
 static u_int32_t net_mask __P((struct in_addr));
 #endif
 
-#if !defined(isascii)	/* XXX - could be a function */
+#if !defined(isascii)	/*%< XXX - could be a function */
 # define isascii(c) (!(c & 0200))
 #endif
 
@@ -118,7 +122,7 @@ static u_int32_t net_mask __P((struct in_addr));
  * Resolver state default settings.
  */
 
-/*
+/*%
  * Set up default settings.  If the configuration file exist, the values
  * there will have precedence.  Otherwise, the server address is set to
  * INADDR_ANY and the default domain name comes from the gethostname().
@@ -146,14 +150,14 @@ res_ninit(res_state statp) {
 	return (__res_vinit(statp, 0));
 }
 
-/* This function has to be reachable by res_data.c but not publically. */
+/*% This function has to be reachable by res_data.c but not publically. */
 int
 __res_vinit(res_state statp, int preinit) {
 	register FILE *fp;
 	register char *cp, **pp;
 	register int n;
 	char buf[BUFSIZ];
-	int nserv = 0;    /* number of nameserver records read from file */
+	int nserv = 0;    /*%< number of nameserver records read from file */
 	int haveenv = 0;
 	int havesearch = 0;
 #ifdef RESOLVSORT
@@ -161,6 +165,10 @@ __res_vinit(res_state statp, int preinit) {
 	char *net;
 #endif
 	int dots;
+	union res_sockaddr_union u[2];
+
+	if (statp->_u._ext.ext != NULL)
+		res_ndestroy(statp);
 
 	if (!preinit) {
 		statp->retrans = RES_TIMEOUT;
@@ -169,20 +177,32 @@ __res_vinit(res_state statp, int preinit) {
 		statp->id = res_randomid();
 	}
 
-	if ((statp->options & RES_INIT) != 0)
-		res_ndestroy(statp);
-
+	memset(u, 0, sizeof(u));
 #ifdef USELOOPBACK
-	statp->nsaddr.sin_addr = inet_makeaddr(IN_LOOPBACKNET, 1);
+	u[nserv].sin.sin_addr = inet_makeaddr(IN_LOOPBACKNET, 1);
 #else
-	statp->nsaddr.sin_addr.s_addr = INADDR_ANY;
+	u[nserv].sin.sin_addr.s_addr = INADDR_ANY;
 #endif
-	statp->nsaddr.sin_family = AF_INET;
-	statp->nsaddr.sin_port = htons(NAMESERVER_PORT);
+	u[nserv].sin.sin_family = AF_INET;
+	u[nserv].sin.sin_port = htons(NAMESERVER_PORT);
 #ifdef HAVE_SA_LEN
-	statp->nsaddr.sin_len = sizeof(struct sockaddr_in);
+	u[nserv].sin.sin_len = sizeof(struct sockaddr_in);
 #endif
-	statp->nscount = 1;
+	nserv++;
+#ifdef HAS_INET6_STRUCTS
+#ifdef USELOOPBACK
+	u[nserv].sin6.sin6_addr = in6addr_loopback;
+#else
+	u[nserv].sin6.sin6_addr = in6addr_any;
+#endif
+	u[nserv].sin6.sin6_family = AF_INET6;
+	u[nserv].sin6.sin6_port = htons(NAMESERVER_PORT);
+#ifdef HAVE_SA_LEN
+	u[nserv].sin6.sin6_len = sizeof(struct sockaddr_in6);
+#endif
+	nserv++;
+#endif
+	statp->nscount = 0;
 	statp->ndots = 1;
 	statp->pfcode = 0;
 	statp->_vcsock = -1;
@@ -196,11 +216,34 @@ __res_vinit(res_state statp, int preinit) {
 		statp->_u._ext.ext->nsaddrs[0].sin = statp->nsaddr;
 		strcpy(statp->_u._ext.ext->nsuffix, "ip6.arpa");
 		strcpy(statp->_u._ext.ext->nsuffix2, "ip6.int");
-		strcpy(statp->_u._ext.ext->bsuffix, "ip6.arpa");
-	}
+	} else
+		return (-1);
 #ifdef RESOLVSORT
 	statp->nsort = 0;
 #endif
+	res_setservers(statp, u, nserv);
+
+#ifdef	SOLARIS2
+	/*
+	 * The old libresolv derived the defaultdomain from NIS/NIS+.
+	 * We want to keep this behaviour
+	 */
+	{
+		char buf[sizeof(statp->defdname)], *cp;
+		int ret;
+
+		if ((ret = sysinfo(SI_SRPC_DOMAIN, buf, sizeof(buf))) > 0 &&
+			(unsigned int)ret <= sizeof(buf)) {
+			if (buf[0] == '+')
+				buf[0] = '.';
+			cp = strchr(buf, '.');
+			cp = (cp == NULL) ? buf : (cp + 1);
+			if (strlen(cp) >= sizeof(statp->defdname))
+				goto freedata; 
+			strcpy(statp->defdname, cp);
+		}
+	}
+#endif	/* SOLARIS2 */
 
 	/* Allow user to override the local domain definition */
 	if ((cp = getenv("LOCALDOMAIN")) != NULL) {
@@ -219,7 +262,7 @@ __res_vinit(res_state statp, int preinit) {
 		pp = statp->dnsrch;
 		*pp++ = cp;
 		for (n = 0; *cp && pp < statp->dnsrch + MAXDNSRCH; cp++) {
-			if (*cp == '\n')	/* silly backwards compat */
+			if (*cp == '\n')	/*%< silly backwards compat */
 				break;
 			else if (*cp == ' ' || *cp == '\t') {
 				*cp = 0;
@@ -242,6 +285,7 @@ __res_vinit(res_state statp, int preinit) {
 	(line[sizeof(name) - 1] == ' ' || \
 	 line[sizeof(name) - 1] == '\t'))
 
+	nserv = 0;
 	if ((fp = fopen(_PATH_RESCONF, "r")) != NULL) {
 	    /* read the config file */
 	    while (fgets(buf, sizeof(buf), fp) != NULL) {
@@ -250,7 +294,7 @@ __res_vinit(res_state statp, int preinit) {
 			continue;
 		/* read default domain name */
 		if (MATCH(buf, "domain")) {
-		    if (haveenv)	/* skip if have from environ */
+		    if (haveenv)	/*%< skip if have from environ */
 			    continue;
 		    cp = buf + sizeof("domain") - 1;
 		    while (*cp == ' ' || *cp == '\t')
@@ -266,7 +310,7 @@ __res_vinit(res_state statp, int preinit) {
 		}
 		/* set search list */
 		if (MATCH(buf, "search")) {
-		    if (haveenv)	/* skip if have from environ */
+		    if (haveenv)	/*%< skip if have from environ */
 			    continue;
 		    cp = buf + sizeof("search") - 1;
 		    while (*cp == ' ' || *cp == '\t')
@@ -385,7 +429,7 @@ __res_vinit(res_state statp, int preinit) {
 		    continue;
 		}
 	    }
-	    if (nserv > 1) 
+	    if (nserv > 0) 
 		statp->nscount = nserv;
 #ifdef RESOLVSORT
 	    statp->nsort = nsort;
@@ -420,7 +464,7 @@ __res_vinit(res_state statp, int preinit) {
 		while (pp < statp->dnsrch + MAXDFLSRCH) {
 			if (dots < LOCALDOMAINPARTS)
 				break;
-			cp = strchr(cp, '.') + 1;    /* we know there is one */
+			cp = strchr(cp, '.') + 1;    /*%< we know there is one */
 			*pp++ = cp;
 			dots--;
 		}
@@ -439,6 +483,15 @@ __res_vinit(res_state statp, int preinit) {
 		res_setoptions(statp, cp, "env");
 	statp->options |= RES_INIT;
 	return (0);
+
+#ifdef	SOLARIS2
+ freedata:
+	if (statp->_u._ext.ext != NULL) {
+		free(statp->_u._ext.ext);
+		statp->_u._ext.ext = NULL;
+	}
+	return (-1);
+#endif
 }
 
 static void
@@ -474,12 +527,36 @@ res_setoptions(res_state statp, const char *options, const char *source)
 				statp->retrans = i;
 			else
 				statp->retrans = RES_MAXRETRANS;
+#ifdef DEBUG
+			if (statp->options & RES_DEBUG)
+				printf(";;\ttimeout=%d\n", statp->retrans);
+#endif
+#ifdef	SOLARIS2
+		} else if (!strncmp(cp, "retrans:", sizeof("retrans:") - 1)) {
+			/*
+		 	 * For backward compatibility, 'retrans' is
+		 	 * supported as an alias for 'timeout', though
+		 	 * without an imposed maximum.
+		 	 */
+			statp->retrans = atoi(cp + sizeof("retrans:") - 1);
+		} else if (!strncmp(cp, "retry:", sizeof("retry:") - 1)){
+			/*
+			 * For backward compatibility, 'retry' is
+			 * supported as an alias for 'attempts', though
+			 * without an imposed maximum.
+			 */
+			statp->retry = atoi(cp + sizeof("retry:") - 1);
+#endif	/* SOLARIS2 */
 		} else if (!strncmp(cp, "attempts:", sizeof("attempts:") - 1)){
 			i = atoi(cp + sizeof("attempts:") - 1);
 			if (i <= RES_MAXRETRY)
 				statp->retry = i;
 			else
 				statp->retry = RES_MAXRETRY;
+#ifdef DEBUG
+			if (statp->options & RES_DEBUG)
+				printf(";;\tattempts=%d\n", statp->retry);
+#endif
 		} else if (!strncmp(cp, "debug", sizeof("debug") - 1)) {
 #ifdef DEBUG
 			if (!(statp->options & RES_DEBUG)) {
@@ -507,9 +584,6 @@ res_setoptions(res_state statp, const char *options, const char *source)
 			statp->options |= RES_USE_EDNS0;
 		}
 #endif
-		else if (!strncmp(cp, "a6", sizeof("a6") - 1)) {
-			statp->options |= RES_USE_A6;
-		}
 		else if (!strncmp(cp, "dname", sizeof("dname") - 1)) {
 			statp->options |= RES_USE_DNAME;
 		}
@@ -528,14 +602,6 @@ res_setoptions(res_state statp, const char *options, const char *source)
 			i = MIN(strcspn(cp, " \t"), sizeof(ext->nsuffix2) - 1);
 			strncpy(ext->nsuffix2, cp, i);
 			ext->nsuffix2[i] = '\0';
-		}
-		else if (!strncmp(cp, "bitstring:", sizeof("bitstring:") - 1)) {
-			if (ext == NULL)
-				goto skip;
-			cp += sizeof("bitstring:") - 1;
-			i = MIN(strcspn(cp, " \t"), sizeof(ext->bsuffix) - 1);
-			strncpy(ext->bsuffix, cp, i);
-			ext->bsuffix[i] = '\0';
 		}
 		else if (!strncmp(cp, "v6revmode:", sizeof("v6revmode:") - 1)) {
 			cp += sizeof("v6revmode:") - 1;
@@ -560,7 +626,7 @@ res_setoptions(res_state statp, const char *options, const char *source)
 #ifdef RESOLVSORT
 /* XXX - should really support CIDR which means explicit masks always. */
 static u_int32_t
-net_mask(in)		/* XXX - should really use system's version of this */
+net_mask(in)		/*!< XXX - should really use system's version of this  */
 	struct in_addr in;
 {
 	register u_int32_t i = ntohl(in.s_addr);
@@ -581,7 +647,7 @@ res_randomid(void) {
 	return (0xffff & (now.tv_sec ^ now.tv_usec ^ getpid()));
 }
 
-/*
+/*%
  * This routine is for closing the socket if a virtual circuit is used and
  * the program wants to close it.  This provides support for endhostent()
  * which expects to close the socket.
@@ -628,13 +694,6 @@ res_get_nibblesuffix2(res_state statp) {
 	return ("ip6.int");
 }
 
-const char *
-res_get_bitstringsuffix(res_state statp) {
-	if (statp->_u._ext.ext)
-		return (statp->_u._ext.ext->bsuffix);
-	return ("ip6.arpa");
-}
-
 void
 res_setservers(res_state statp, const union res_sockaddr_union *set, int cnt) {
 	int i, nserv;
@@ -662,6 +721,7 @@ res_setservers(res_state statp, const union res_sockaddr_union *set, int cnt) {
 			nserv++;
 			break;
 
+#ifdef HAS_INET6_STRUCTS
 		case AF_INET6:
 			size = sizeof(set->sin6);
 			if (statp->_u._ext.ext)
@@ -674,6 +734,7 @@ res_setservers(res_state statp, const union res_sockaddr_union *set, int cnt) {
 				statp->nsaddr_list[nserv].sin_family = 0;
 			nserv++;
 			break;
+#endif
 
 		default:
 			break;
@@ -708,6 +769,7 @@ res_getservers(res_state statp, union res_sockaddr_union *set, int cnt) {
 				       size);
 			break;
 
+#ifdef HAS_INET6_STRUCTS
 		case AF_INET6:
 			size = sizeof(set->sin6);
 			if (statp->_u._ext.ext)
@@ -718,6 +780,7 @@ res_getservers(res_state statp, union res_sockaddr_union *set, int cnt) {
 				memcpy(&set->sin6, &statp->nsaddr_list[i],
 				       size);
 			break;
+#endif
 
 		default:
 			set->sin.sin_family = 0;
@@ -727,3 +790,5 @@ res_getservers(res_state statp, union res_sockaddr_union *set, int cnt) {
 	}
 	return (statp->nscount);
 }
+
+/*! \file */

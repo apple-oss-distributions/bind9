@@ -53,9 +53,9 @@
  * --Copyright--
  */
 
-/*
+/*%
  *	@(#)inet.h	8.1 (Berkeley) 6/2/93
- *	$Id: inet.h,v 1.1.1.1 2003/01/10 00:48:13 bbraun Exp $
+ *	$Id: inet.h,v 1.2.18.1 2005/04/27 05:00:50 sra Exp $
  */
 
 #ifndef _INET_H_
@@ -107,4 +107,20 @@ u_int		 inet_nsap_addr __P((const char *, u_char *, int));
 char		*inet_nsap_ntoa __P((int, const u_char *, char *));
 __END_DECLS
 
+#if defined(__hpux) && defined(_XOPEN_SOURCE_EXTENDED)
+/*
+ * Macros for number representation conversion.
+ *
+ *    netinet/in.h is another location for these macros
+ */
+#ifndef ntohl
+#define ntohl(x)	(x)
+#define ntohs(x)	(x)
+#define htonl(x)	(x)
+#define htons(x)	(x)
+#endif
+#endif
+
 #endif /* !_INET_H_ */
+
+/*! \file */

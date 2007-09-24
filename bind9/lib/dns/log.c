@@ -1,21 +1,23 @@
 /*
- * Copyright (C) 1999-2001  Internet Software Consortium.
+ * Copyright (C) 2004, 2005  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1999-2001, 2003  Internet Software Consortium.
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
  *
- * THE SOFTWARE IS PROVIDED "AS IS" AND INTERNET SOFTWARE CONSORTIUM
- * DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL
- * INTERNET SOFTWARE CONSORTIUM BE LIABLE FOR ANY SPECIAL, DIRECT,
- * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING
- * FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
- * NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION
- * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
+ * REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
+ * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+ * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
+ * OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
  */
 
-/* $Id: log.c,v 1.1.1.1 2003/01/10 00:48:33 bbraun Exp $ */
+/* $Id: log.c,v 1.36.18.4 2005/09/05 00:18:24 marka Exp $ */
+
+/*! \file */
 
 /* Principal Authors: DCL */
 
@@ -25,7 +27,7 @@
 
 #include <dns/log.h>
 
-/*
+/*%
  * When adding a new category, be sure to add the appropriate
  * #define to <dns/log.h>.
  */
@@ -33,17 +35,18 @@ LIBDNS_EXTERNAL_DATA isc_logcategory_t dns_categories[] = {
 	{ "notify", 	0 },
 	{ "database", 	0 },
 	{ "security", 	0 },
-	{ "oldconfig",  0 }, /* Placeholder */
+	{ "_placeholder", 0 },
 	{ "dnssec",	0 },
 	{ "resolver",	0 },
 	{ "xfer-in",	0 },
 	{ "xfer-out",	0 },
 	{ "dispatch",	0 },
 	{ "lame-servers", 0 },
+	{ "delegation-only", 0 },
 	{ NULL, 	0 }
 };
 
-/*
+/*%
  * When adding a new module, be sure to add the appropriate
  * #define to <dns/log.h>.
  */
@@ -73,6 +76,8 @@ LIBDNS_EXTERNAL_DATA isc_logmodule_t dns_modules[] = {
 	{ "dns/sdb",		0 },
 	{ "dns/diff",		0 },
 	{ "dns/hints",		0 },
+	{ "dns/acache",		0 },
+	{ "dns/dlz",		0 },
 	{ NULL, 		0 }
 };
 

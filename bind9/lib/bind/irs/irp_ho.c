@@ -1,22 +1,22 @@
 /*
+ * Copyright (c) 2004 by Internet Systems Consortium, Inc. ("ISC")
  * Portions Copyright (c) 1996,1998 by Internet Software Consortium.
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
  *
- * THE SOFTWARE IS PROVIDED "AS IS" AND INTERNET SOFTWARE CONSORTIUM DISCLAIMS
- * ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL INTERNET SOFTWARE
- * CONSORTIUM BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
- * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
- * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
- * ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
- * SOFTWARE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
+ * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
 #if defined(LIBC_SCCS) && !defined(lint)
-static const char rcsid[] = "$Id: irp_ho.c,v 1.1.1.1 2003/01/10 00:48:14 bbraun Exp $";
+static const char rcsid[] = "$Id: irp_ho.c,v 1.2.18.1 2005/04/27 05:01:00 sra Exp $";
 #endif /* LIBC_SCCS and not lint */
 
 /* Imports. */
@@ -84,9 +84,7 @@ static struct addrinfo * ho_addrinfo(struct irs_ho *this, const char *name,
 
 /* Public. */
 
-
-
-/*
+/*%
  * struct irs_ho * irs_irp_ho(struct irs_acc *this)
  *
  * Notes:
@@ -129,13 +127,7 @@ irs_irp_ho(struct irs_acc *this) {
 
 /* Methods. */
 
-
-
-/*
- * void ho_close(struct irs_ho *this)
- *
- * Notes:
- *
+/*%
  *	Closes down the module.
  *
  */
@@ -281,15 +273,7 @@ ho_byaddr(struct irs_ho *this, const void *addr, int len, int af) {
 	return (ho);
 }
 
-
-
-
-
-/*
- * struct hostent * ho_next(struct irs_ho *this)
- *
- * Notes:
- *
+/*%
  *	The implementation for gethostent(3). The first time it's
  *	called all the data is pulled from the remote(i.e. what
  *	the maximum number of gethostent(3) calls would return)
@@ -336,11 +320,7 @@ ho_next(struct irs_ho *this) {
 	return (ho);
 }
 
-
-
-
-
-/*
+/*%
  * void ho_rewind(struct irs_ho *this)
  *
  */
@@ -369,10 +349,7 @@ ho_rewind(struct irs_ho *this) {
 	return;
 }
 
-
-
-
-/*
+/*%
  * void ho_minimize(struct irs_ho *this)
  *
  */
@@ -386,10 +363,7 @@ ho_minimize(struct irs_ho *this) {
 	irs_irp_disconnect(pvt->girpdata);
 }
 
-
-
-
-/*
+/*%
  * void free_host(struct hostent *ho)
  *
  */
@@ -427,3 +401,5 @@ ho_addrinfo(struct irs_ho *this, const char *name, const struct addrinfo *pai)
 	UNUSED(pai);
 	return(NULL);
 }
+
+/*! \file */

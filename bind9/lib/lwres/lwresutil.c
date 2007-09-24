@@ -1,21 +1,100 @@
 /*
+ * Copyright (C) 2004, 2005  Internet Systems Consortium, Inc. ("ISC")
  * Copyright (C) 2000, 2001  Internet Software Consortium.
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
  *
- * THE SOFTWARE IS PROVIDED "AS IS" AND INTERNET SOFTWARE CONSORTIUM
- * DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL
- * INTERNET SOFTWARE CONSORTIUM BE LIABLE FOR ANY SPECIAL, DIRECT,
- * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING
- * FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
- * NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION
- * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
+ * REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
+ * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+ * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
+ * OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
  */
 
-/* $Id: lwresutil.c,v 1.1.1.1 2003/01/10 00:48:46 bbraun Exp $ */
+/* $Id: lwresutil.c,v 1.30.18.2 2005/04/29 00:17:20 marka Exp $ */
+
+/*! \file */
+
+/**
+ *    lwres_string_parse() retrieves a DNS-encoded string starting the
+ *    current pointer of lightweight resolver buffer b: i.e. b->current.
+ *    When the function returns, the address of the first byte of the
+ *    encoded string is returned via *c and the length of that string is
+ *    given by *len. The buffer's current pointer is advanced to point at
+ *    the character following the string length, the encoded string, and
+ *    the trailing NULL character.
+ * 
+ *    lwres_addr_parse() extracts an address from the buffer b. The
+ *    buffer's current pointer b->current is presumed to point at an
+ *    encoded address: the address preceded by a 32-bit protocol family
+ *    identifier and a 16-bit length field. The encoded address is copied
+ *    to addr->address and addr->length indicates the size in bytes of
+ *    the address that was copied. b->current is advanced to point at the
+ *  next byte of available data in the buffer following the encoded
+ *    address.
+ * 
+ *    lwres_getaddrsbyname() and lwres_getnamebyaddr() use the
+ *    lwres_gnbaresponse_t structure defined below:
+ * 
+ * \code
+ * typedef struct {
+ *         lwres_uint32_t          flags;
+ *         lwres_uint16_t          naliases;
+ *         lwres_uint16_t          naddrs;
+ *         char                   *realname;
+ *         char                  **aliases;
+ *         lwres_uint16_t          realnamelen;
+ *         lwres_uint16_t         *aliaslen;
+ *         lwres_addrlist_t        addrs;
+ *         void                   *base;
+ *         size_t                  baselen;
+ * } lwres_gabnresponse_t;
+ * \endcode
+ * 
+ *    The contents of this structure are not manipulated directly but
+ *    they are controlled through the \link lwres_gabn.c lwres_gabn*\endlink functions.  
+ * 
+ *    The lightweight resolver uses lwres_getaddrsbyname() to perform
+ *    foward lookups. Hostname name is looked up using the resolver
+ *    context ctx for memory allocation. addrtypes is a bitmask      
+ *    indicating which type of addresses are to be looked up. Current
+ *    values for this bitmask are #LWRES_ADDRTYPE_V4 for IPv4 addresses
+ *    and #LWRES_ADDRTYPE_V6 for IPv6 addresses. Results of the lookup are
+ *    returned in *structp.
+ * 
+ *    lwres_getnamebyaddr() performs reverse lookups. Resolver context  
+ *    ctx is used for memory allocation. The address type is indicated by
+ *    addrtype: #LWRES_ADDRTYPE_V4 or #LWRES_ADDRTYPE_V6. The address to be
+ *    looked up is given by addr and its length is addrlen bytes. The    
+ *    result of the function call is made available through *structp.   
+ * 
+ * \section lwresutil_return Return Values
+ * 
+ *    Successful calls to lwres_string_parse() and lwres_addr_parse()
+ *    return #LWRES_R_SUCCESS. Both functions return #LWRES_R_FAILURE if 
+ *    the buffer is corrupt or #LWRES_R_UNEXPECTEDEND if the buffer has   
+ *    less space than expected for the components of the encoded string
+ *    or address.
+ * 
+ * lwres_getaddrsbyname() returns #LWRES_R_SUCCESS on success and it
+ *    returns #LWRES_R_NOTFOUND if the hostname name could not be found.
+ * 
+ *    #LWRES_R_SUCCESS is returned by a successful call to
+ *    lwres_getnamebyaddr().
+ * 
+ *    Both lwres_getaddrsbyname() and lwres_getnamebyaddr() return
+ *    #LWRES_R_NOMEMORY when memory allocation requests fail and
+ *    #LWRES_R_UNEXPECTEDEND if the buffers used for sending queries and
+ *    receiving replies are too small.     
+ * 
+ * \section lwresutil_see See Also
+ * 
+ *    lwbuffer.c, lwres_gabn.c
+ */
 
 #include <config.h>
 
@@ -31,7 +110,8 @@
 #include "assert_p.h"
 #include "context_p.h"
 
-/*
+/*% Parse data. */
+/*!
  * Requires:
  *
  *	The "current" pointer in "b" points to encoded raw data.
@@ -78,7 +158,8 @@ lwres_data_parse(lwres_buffer_t *b, unsigned char **p, lwres_uint16_t *len)
 	return (LWRES_R_SUCCESS);
 }
 
-/*
+/*% Retrieves a DNS-encoded string. */
+/*!
  * Requires:
  *
  *	The "current" pointer in "b" point to an encoded string.
@@ -133,6 +214,7 @@ lwres_string_parse(lwres_buffer_t *b, char **c, lwres_uint16_t *len)
 	return (LWRES_R_SUCCESS);
 }
 
+/*% Extracts an address from the buffer b. */
 lwres_result_t
 lwres_addr_parse(lwres_buffer_t *b, lwres_addr_t *addr)
 {
@@ -154,6 +236,7 @@ lwres_addr_parse(lwres_buffer_t *b, lwres_addr_t *addr)
 	return (LWRES_R_SUCCESS);
 }
 
+/*% Used to perform forward lookups. */
 lwres_result_t
 lwres_getaddrsbyname(lwres_context_t *ctx, const char *name,
 		     lwres_uint32_t addrtypes, lwres_gabnresponse_t **structp)
@@ -268,6 +351,7 @@ lwres_getaddrsbyname(lwres_context_t *ctx, const char *name,
 }
 
 
+/*% Used to perform reverse lookups. */
 lwres_result_t
 lwres_getnamebyaddr(lwres_context_t *ctx, lwres_uint32_t addrtype,
 		    lwres_uint16_t addrlen, const unsigned char *addr,
@@ -376,6 +460,7 @@ lwres_getnamebyaddr(lwres_context_t *ctx, lwres_uint32_t addrtype,
 	return (ret);
 }
 
+/*% Get rdata by name. */
 lwres_result_t
 lwres_getrdatabyname(lwres_context_t *ctx, const char *name,
 		     lwres_uint16_t rdclass, lwres_uint16_t rdtype,

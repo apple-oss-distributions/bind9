@@ -1,23 +1,24 @@
 /*
- * Copyright (C) 2000, 2001  Internet Software Consortium.
+ * Copyright (C) 2004-2006  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 2000-2003  Internet Software Consortium.
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
  *
- * THE SOFTWARE IS PROVIDED "AS IS" AND INTERNET SOFTWARE CONSORTIUM
- * DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL
- * INTERNET SOFTWARE CONSORTIUM BE LIABLE FOR ANY SPECIAL, DIRECT,
- * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING
- * FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
- * NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION
- * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
+ * REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
+ * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+ * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
+ * OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
  */
 
-/* $Id: lwresd.c,v 1.1.1.1 2003/01/10 00:47:29 bbraun Exp $ */
+/* $Id: lwresd.c,v 1.46.18.7 2006/03/02 00:37:21 marka Exp $ */
 
-/*
+/*! \file 
+ * \brief
  * Main program for the Lightweight Resolver Daemon.
  *
  * To paraphrase the old saying about X11, "It's not a lightweight deamon
@@ -38,7 +39,7 @@
 #include <isc/task.h>
 #include <isc/util.h>
 
-#include <isccfg/cfg.h>
+#include <isccfg/namedconf.h>
 
 #include <dns/log.h>
 #include <dns/result.h>
@@ -59,11 +60,11 @@
 #define LWRESLISTENER_MAGIC	ISC_MAGIC('L', 'W', 'R', 'L')
 #define VALID_LWRESLISTENER(l)	ISC_MAGIC_VALID(l, LWRESLISTENER_MAGIC)
 
-/*
+/*!
  * The total number of clients we can handle will be NTASKS * NRECVS.
  */
-#define NTASKS		2	/* tasks to create to handle lwres queries */
-#define NRECVS		2	/* max clients per task */
+#define NTASKS		2	/*%< tasks to create to handle lwres queries */
+#define NRECVS		2	/*%< max clients per task */
 
 typedef ISC_LIST(ns_lwreslistener_t) ns_lwreslistenerlist_t;
 
@@ -78,7 +79,7 @@ initialize_mutex(void) {
 }
 
 
-/*
+/*%
  * Wrappers around our memory management stuff, for the lwres functions.
  */
 void *
@@ -152,7 +153,7 @@ ns_lwresd_parseeresolvconf(isc_mem_t *mctx, cfg_parser_t *pctx,
 	if (lwc->nsnext > 0) {
 		CHECK(buffer_putstr(&b, "\tforwarders {\n"));
 
-		for (i = 0 ; i < lwc->nsnext ; i++) {
+		for (i = 0; i < lwc->nsnext; i++) {
 			CHECK(lwaddr_sockaddr_fromlwresaddr(
 							&sa,
 							&lwc->nameservers[i],
@@ -173,7 +174,7 @@ ns_lwresd_parseeresolvconf(isc_mem_t *mctx, cfg_parser_t *pctx,
 		CHECK(buffer_putstr(&b, "\t\t{\n"));
 		CHECK(buffer_putstr(&b, "\t\t\tany;\n"));
 		CHECK(buffer_putstr(&b, "\t\t\t{\n"));
-		for (i = 0 ; i < lwc->sortlistnxt; i++) {
+		for (i = 0; i < lwc->sortlistnxt; i++) {
 			lwres_addr_t *lwaddr = &lwc->sortlist[i].addr;
 			lwres_addr_t *lwmask = &lwc->sortlist[i].mask;
 			unsigned int mask;
@@ -245,7 +246,7 @@ ns_lwresd_parseeresolvconf(isc_mem_t *mctx, cfg_parser_t *pctx,
 	if (lwc->lwnext > 0) {
 		CHECK(buffer_putstr(&b, "\tlisten-on {\n"));
 
-		for (i = 0 ; i < lwc->lwnext ; i++) {
+		for (i = 0; i < lwc->lwnext; i++) {
 			CHECK(lwaddr_sockaddr_fromlwresaddr(&sa,
 							    &lwc->lwservers[i],
 							    0));
@@ -285,14 +286,14 @@ ns_lwresd_parseeresolvconf(isc_mem_t *mctx, cfg_parser_t *pctx,
  * Handle lwresd manager objects
  */
 isc_result_t
-ns_lwdmanager_create(isc_mem_t *mctx, cfg_obj_t *lwres,
+ns_lwdmanager_create(isc_mem_t *mctx, const cfg_obj_t *lwres,
 		     ns_lwresd_t **lwresdp)
 {
 	ns_lwresd_t *lwresd;
 	const char *vname;
 	dns_rdataclass_t vclass;
-	cfg_obj_t *obj, *viewobj, *searchobj;
-	cfg_listelt_t *element;
+	const cfg_obj_t *obj, *viewobj, *searchobj;
+	const cfg_listelt_t *element;
 	isc_result_t result;
 
 	INSIST(lwresdp != NULL && *lwresdp == NULL);
@@ -341,7 +342,7 @@ ns_lwdmanager_create(isc_mem_t *mctx, cfg_obj_t *lwres,
 	}
 
 	searchobj = NULL;
-	cfg_map_get(lwres, "search", &searchobj);
+	(void)cfg_map_get(lwres, "search", &searchobj);
 	if (searchobj != NULL) {
 		lwresd->search = NULL;
 		result = ns_lwsearchlist_create(lwresd->mctx,
@@ -356,8 +357,8 @@ ns_lwdmanager_create(isc_mem_t *mctx, cfg_obj_t *lwres,
 		     element != NULL;
 		     element = cfg_list_next(element))
 		{
-			cfg_obj_t *search;
-			char *searchstr;
+			const cfg_obj_t *search;
+			const char *searchstr;
 			isc_buffer_t namebuf;
 			dns_fixedname_t fname;
 			dns_name_t *name;
@@ -407,6 +408,7 @@ ns_lwdmanager_create(isc_mem_t *mctx, cfg_obj_t *lwres,
 		ns_lwsearchlist_detach(&lwresd->search);
 	if (lwresd->mctx != NULL)
 		isc_mem_detach(&lwresd->mctx);
+	isc_mem_put(mctx, lwresd, sizeof(ns_lwresd_t));
 	return (result);
 }
 
@@ -432,6 +434,7 @@ ns_lwdmanager_detach(ns_lwresd_t **lwresdp) {
 	INSIST(VALID_LWRESD(*lwresdp));
 
 	lwresd = *lwresdp;
+	*lwresdp = NULL;
 
 	LOCK(&lwresd->lock);
 	INSIST(lwresd->refs > 0);
@@ -450,7 +453,6 @@ ns_lwdmanager_detach(ns_lwresd_t **lwresdp) {
 	lwresd->magic = 0;
 	isc_mem_put(mctx, lwresd, sizeof(*lwresd));
 	isc_mem_detach(&mctx);
-	lwresdp = NULL;
 }
 
 
@@ -495,7 +497,7 @@ ns_lwreslistener_detach(ns_lwreslistener_t **listenerp) {
 	if (listener->manager != NULL)
 		ns_lwdmanager_detach(&listener->manager);
 
-	if (listener->sock != 0)
+	if (listener->sock != NULL)
 		isc_socket_detach(&listener->sock);
 
 	listener->magic = 0;
@@ -510,13 +512,19 @@ listener_create(isc_mem_t *mctx, ns_lwresd_t *lwresd,
 		ns_lwreslistener_t **listenerp)
 {
 	ns_lwreslistener_t *listener;
+	isc_result_t result;
 
 	REQUIRE(listenerp != NULL && *listenerp == NULL);
 
 	listener = isc_mem_get(mctx, sizeof(ns_lwreslistener_t));
 	if (listener == NULL)
 		return (ISC_R_NOMEMORY);
-	RUNTIME_CHECK(isc_mutex_init(&listener->lock) == ISC_R_SUCCESS);
+
+	result = isc_mutex_init(&listener->lock);
+	if (result != ISC_R_SUCCESS) {
+		isc_mem_put(mctx, listener, sizeof(ns_lwreslistener_t));
+		return (result);
+	}
 
 	listener->magic = LWRESLISTENER_MAGIC;
 	listener->refs = 1;
@@ -563,18 +571,21 @@ listener_bind(ns_lwreslistener_t *listener, isc_sockaddr_t *address) {
 	if (result != ISC_R_SUCCESS) {
 		isc_log_write(ns_g_lctx, NS_LOGCATEGORY_GENERAL,
 			      NS_LOGMODULE_LWRESD, ISC_LOG_WARNING,
-			      "failed to create socket: %s",
+			      "failed to create lwres socket: %s",
 			      isc_result_totext(result));
 		return (result);
 	}
 
 	result = isc_socket_bind(sock, &listener->address);
 	if (result != ISC_R_SUCCESS) {
+		char socktext[ISC_SOCKADDR_FORMATSIZE];
+		isc_sockaddr_format(&listener->address, socktext,
+				    sizeof(socktext));
 		isc_socket_detach(&sock);
 		isc_log_write(ns_g_lctx, NS_LOGCATEGORY_GENERAL,
 			      NS_LOGMODULE_LWRESD, ISC_LOG_WARNING,
-			      "failed to bind socket: %s",
-			      isc_result_totext(result));
+			      "failed to add lwres socket: %s: %s",
+			      socktext, isc_result_totext(result));
 		return (result);
 	}
 	listener->sock = sock;
@@ -599,7 +610,7 @@ listener_startclients(ns_lwreslistener_t *listener) {
 	 * Create the client managers.
 	 */
 	result = ISC_R_SUCCESS;
-	for (i = 0 ; i < NTASKS && result == ISC_R_SUCCESS; i++)
+	for (i = 0; i < NTASKS && result == ISC_R_SUCCESS; i++)
 		result = ns_lwdclientmgr_create(listener, NRECVS,
 						ns_g_taskmgr);
 
@@ -615,7 +626,13 @@ listener_startclients(ns_lwreslistener_t *listener) {
 	LOCK(&listener->lock);
 	cm = ISC_LIST_HEAD(listener->cmgrs);
 	while (cm != NULL) {
-		ns_lwdclient_startrecv(cm);
+		result = ns_lwdclient_startrecv(cm);
+		if (result != ISC_R_SUCCESS)
+			isc_log_write(ns_g_lctx, NS_LOGCATEGORY_GENERAL,
+				      NS_LOGMODULE_LWRESD, ISC_LOG_ERROR,
+				      "could not start lwres "
+				      "client handler: %s",
+				      isc_result_totext(result));
 		cm = ISC_LIST_NEXT(cm, link);
 	}
 	UNLOCK(&listener->lock);
@@ -698,8 +715,10 @@ configure_listener(isc_sockaddr_t *address, ns_lwresd_t *lwresd,
 	 */
 	if (oldlistener == NULL) {
 		result = listener_bind(listener, address);
-		if (result != ISC_R_SUCCESS)
-			return (result);
+		if (result != ISC_R_SUCCESS) {
+			ns_lwreslistener_detach(&listener);
+			return (ISC_R_SUCCESS);
+		}
 	} else
 		listener_copysock(oldlistener, listener);
 
@@ -711,7 +730,7 @@ configure_listener(isc_sockaddr_t *address, ns_lwresd_t *lwresd,
 			      "lwres: failed to start %s: %s", socktext,
 			      isc_result_totext(result));
 		ns_lwreslistener_detach(&listener);
-		return (result);
+		return (ISC_R_SUCCESS);
 	}
 
 	if (oldlistener != NULL) {
@@ -733,15 +752,18 @@ configure_listener(isc_sockaddr_t *address, ns_lwresd_t *lwresd,
 }
 
 isc_result_t
-ns_lwresd_configure(isc_mem_t *mctx, cfg_obj_t *config) {
-	cfg_obj_t *lwreslist = NULL;
-	cfg_obj_t *lwres = NULL;
-	cfg_obj_t *listenerslist = NULL;
-	cfg_listelt_t *element = NULL;
+ns_lwresd_configure(isc_mem_t *mctx, const cfg_obj_t *config) {
+	const cfg_obj_t *lwreslist = NULL;
+	const cfg_obj_t *lwres = NULL;
+	const cfg_obj_t *listenerslist = NULL;
+	const cfg_listelt_t *element = NULL;
 	ns_lwreslistener_t *listener;
 	ns_lwreslistenerlist_t newlisteners;
 	isc_result_t result;
 	char socktext[ISC_SOCKADDR_FORMATSIZE];
+	isc_sockaddr_t *addrs = NULL;
+	ns_lwresd_t *lwresd = NULL;
+	isc_uint32_t count = 0;
 
 	REQUIRE(mctx != NULL);
 	REQUIRE(config != NULL);
@@ -767,56 +789,36 @@ ns_lwresd_configure(isc_mem_t *mctx, cfg_obj_t *config) {
 	     element != NULL;
 	     element = cfg_list_next(element))
 	{
-		ns_lwresd_t *lwresd;
 		in_port_t port;
-		isc_sockaddr_t *addrs = NULL;
-		isc_uint32_t count;
 
 		lwres = cfg_listelt_value(element);
-		lwresd = NULL;
-		result = ns_lwdmanager_create(mctx, lwres, &lwresd);
-		if (result != ISC_R_SUCCESS)
-			return (result);
+		CHECK(ns_lwdmanager_create(mctx, lwres, &lwresd));
 
 		port = lwresd_g_listenport;
 		if (port == 0)
 			port = LWRES_UDP_PORT;
 
 		listenerslist = NULL;
-		cfg_map_get(lwres, "listen-on", &listenerslist);
+		(void)cfg_map_get(lwres, "listen-on", &listenerslist);
 		if (listenerslist == NULL) {
 			struct in_addr localhost;
 			isc_sockaddr_t address;
 
 			localhost.s_addr = htonl(INADDR_LOOPBACK);
 			isc_sockaddr_fromin(&address, &localhost, port);
-			result = configure_listener(&address, lwresd,
-						    mctx, &newlisteners);
+			CHECK(configure_listener(&address, lwresd, mctx,
+						 &newlisteners));
 		} else {
 			isc_uint32_t i;
 
-			result = ns_config_getiplist(config, listenerslist,
-						     port, mctx,
-						     &addrs, &count);
-			if (result != ISC_R_SUCCESS)
-				goto failure;
-			
-			for (i = 0; i < count; i++) {
-				result = configure_listener(&addrs[i], lwresd,
-							    mctx,
-							    &newlisteners);
-				if (result != ISC_R_SUCCESS)
-					goto failure;
-			}
-		}
-
-	failure:
-		if (addrs != NULL)
+			CHECK(ns_config_getiplist(config, listenerslist,
+						  port, mctx, &addrs, &count));
+			for (i = 0; i < count; i++)
+				CHECK(configure_listener(&addrs[i], lwresd,
+							 mctx, &newlisteners));
 			ns_config_putiplist(mctx, &addrs, count);
-
+		}
 		ns_lwdmanager_detach(&lwresd);
-		if (result != ISC_R_SUCCESS)
-			return (result);
 	}
 
 	/*
@@ -827,21 +829,30 @@ ns_lwresd_configure(isc_mem_t *mctx, cfg_obj_t *config) {
 	while (!ISC_LIST_EMPTY(listeners)) {
 		listener = ISC_LIST_HEAD(listeners);
 		ISC_LIST_UNLINK(listeners, listener, link);
-		listener_shutdown(listener);
-		ns_lwreslistener_detach(&listener);
 
 		isc_sockaddr_format(&listener->address,
 				    socktext, sizeof(socktext));
+
+		listener_shutdown(listener);
+		ns_lwreslistener_detach(&listener);
+
 		isc_log_write(ns_g_lctx, ISC_LOGCATEGORY_GENERAL,
 			      NS_LOGMODULE_LWRESD, ISC_LOG_NOTICE,
 			      "lwres no longer listening on %s", socktext);
-
 	}
+
+ cleanup:
 	ISC_LIST_APPENDLIST(listeners, newlisteners, link);
+
+	if (addrs != NULL)
+		ns_config_putiplist(mctx, &addrs, count);
+
+	if (lwresd != NULL)
+		ns_lwdmanager_detach(&lwresd);
 
 	UNLOCK(&listeners_lock);
 
-	return (ISC_R_SUCCESS);
+	return (result);
 }
 
 void

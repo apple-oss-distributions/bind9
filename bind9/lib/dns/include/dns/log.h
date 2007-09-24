@@ -1,23 +1,24 @@
 /*
- * Copyright (C) 1999-2001  Internet Software Consortium.
+ * Copyright (C) 2004, 2005  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1999-2001, 2003  Internet Software Consortium.
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
  *
- * THE SOFTWARE IS PROVIDED "AS IS" AND INTERNET SOFTWARE CONSORTIUM
- * DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL
- * INTERNET SOFTWARE CONSORTIUM BE LIABLE FOR ANY SPECIAL, DIRECT,
- * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING
- * FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
- * NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION
- * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
+ * REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
+ * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+ * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
+ * OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
  */
 
-/* $Id: log.h,v 1.1.1.1 2003/01/10 00:48:35 bbraun Exp $ */
+/* $Id: log.h,v 1.33.18.4 2005/09/05 00:18:27 marka Exp $ */
 
-/* Principal Authors: DCL */
+/*! \file
+ * \author  Principal Authors: DCL */
 
 #ifndef DNS_LOG_H
 #define DNS_LOG_H 1
@@ -39,6 +40,7 @@ LIBDNS_EXTERNAL_DATA extern isc_logmodule_t dns_modules[];
 #define DNS_LOGCATEGORY_XFER_OUT	(&dns_categories[7])
 #define DNS_LOGCATEGORY_DISPATCH	(&dns_categories[8])
 #define DNS_LOGCATEGORY_LAME_SERVERS	(&dns_categories[9])
+#define DNS_LOGCATEGORY_DELEGATION_ONLY	(&dns_categories[10])
 
 /* Backwards compatibility. */
 #define DNS_LOGCATEGORY_GENERAL		ISC_LOGCATEGORY_GENERAL
@@ -68,33 +70,35 @@ LIBDNS_EXTERNAL_DATA extern isc_logmodule_t dns_modules[];
 #define DNS_LOGMODULE_SDB		(&dns_modules[22])
 #define DNS_LOGMODULE_DIFF		(&dns_modules[23])
 #define DNS_LOGMODULE_HINTS		(&dns_modules[24])
+#define DNS_LOGMODULE_ACACHE		(&dns_modules[25])
+#define DNS_LOGMODULE_DLZ		(&dns_modules[26])
 
 ISC_LANG_BEGINDECLS
 
 void
 dns_log_init(isc_log_t *lctx);
-/*
+/*%
  * Make the libdns categories and modules available for use with the
  * ISC logging library.
  *
  * Requires:
- *	lctx is a valid logging context.
+ *\li	lctx is a valid logging context.
  *
- *	dns_log_init() is called only once.
+ *\li	dns_log_init() is called only once.
  *
  * Ensures:
- * 	The catgories and modules defined above are available for
+ * \li	The catgories and modules defined above are available for
  * 	use by isc_log_usechannnel() and isc_log_write().
  */
 
 void
 dns_log_setcontext(isc_log_t *lctx);
-/*
+/*%
  * Make the libdns library use the provided context for logging internal
  * messages.
  *
  * Requires:
- *	lctx is a valid logging context.
+ *\li	lctx is a valid logging context.
  */
 
 ISC_LANG_ENDDECLS

@@ -1,22 +1,22 @@
 /*
+ * Copyright (c) 2004 by Internet Systems Consortium, Inc. ("ISC")
  * Copyright (c) 1999 by Internet Software Consortium, Inc.
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
  *
- * THE SOFTWARE IS PROVIDED "AS IS" AND INTERNET SOFTWARE CONSORTIUM DISCLAIMS
- * ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL INTERNET SOFTWARE
- * CONSORTIUM BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
- * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
- * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
- * ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
- * SOFTWARE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
+ * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
 #ifndef lint
-static const char rcsid[] = "$Id: ns_sign.c,v 1.1.1.2 2003/03/18 19:18:32 rbraun Exp $";
+static const char rcsid[] = "$Id: ns_sign.c,v 1.4.18.2 2006/03/10 00:20:08 marka Exp $";
 #endif
 
 /* Import. */
@@ -41,6 +41,7 @@ static const char rcsid[] = "$Id: ns_sign.c,v 1.1.1.2 2003/03/18 19:18:32 rbraun
 #include <unistd.h>
 
 #include <isc/dst.h>
+#include <isc/assertions.h>
 
 #include "port_after.h"
 
@@ -52,24 +53,26 @@ static const char rcsid[] = "$Id: ns_sign.c,v 1.1.1.2 2003/03/18 19:18:32 rbraun
 		} \
 	} while (0)
 
-/* ns_sign
+/*%
+ *  ns_sign
+ *
  * Parameters:
- *	msg		message to be sent
- *	msglen		input - length of message
+ *\li	msg		message to be sent
+ *\li	msglen		input - length of message
  *			output - length of signed message
- *	msgsize		length of buffer containing message
- *	error		value to put in the error field
- *	key		tsig key used for signing
- *	querysig	(response), the signature in the query
- *	querysiglen	(response), the length of the signature in the query
- *	sig		a buffer to hold the generated signature
- *	siglen		input - length of signature buffer
+ *\li	msgsize		length of buffer containing message
+ *\li	error		value to put in the error field
+ *\li	key		tsig key used for signing
+ *\li	querysig	(response), the signature in the query
+ *\li	querysiglen	(response), the length of the signature in the query
+ *\li	sig		a buffer to hold the generated signature
+ *\li	siglen		input - length of signature buffer
  *			output - length of signature
  *
  * Errors:
- *	- bad input data (-1)
- *	- bad key / sign failed (-BADKEY)
- *	- not enough space (NS_TSIG_ERROR_NO_SPACE)
+ *\li	- bad input data (-1)
+ *\li	- bad key / sign failed (-BADKEY)
+ *\li	- not enough space (NS_TSIG_ERROR_NO_SPACE)
  */
 int
 ns_sign(u_char *msg, int *msglen, int msgsize, int error, void *k,
@@ -88,31 +91,42 @@ ns_sign2(u_char *msg, int *msglen, int msgsize, int error, void *k,
 {
 	HEADER *hp = (HEADER *)msg;
 	DST_KEY *key = (DST_KEY *)k;
-	u_char *cp = msg + *msglen, *eob = msg + msgsize;
+	u_char *cp, *eob;
 	u_char *lenp;
-	u_char *name, *alg;
+	u_char *alg;
 	int n;
 	time_t timesigned;
+        u_char name[NS_MAXCDNAME];
 
 	dst_init();
 	if (msg == NULL || msglen == NULL || sig == NULL || siglen == NULL)
 		return (-1);
 
+	cp = msg + *msglen;
+	eob = msg + msgsize;
+
 	/* Name. */
-	if (key != NULL && error != ns_r_badsig && error != ns_r_badkey)
-		n = dn_comp(key->dk_key_name, cp, eob - cp, dnptrs, lastdnptr);
-	else
-		n = dn_comp("", cp, eob - cp, NULL, NULL);
+	if (key != NULL && error != ns_r_badsig && error != ns_r_badkey) {
+		n = ns_name_pton(key->dk_key_name, name, sizeof name);
+		if (n != -1)
+			n = ns_name_pack(name, cp, eob - cp,
+					 (const u_char **)dnptrs,
+					 (const u_char **)lastdnptr);
+
+	} else {
+		n = ns_name_pton("", name, sizeof name);
+		if (n != -1)
+			n = ns_name_pack(name, cp, eob - cp, NULL, NULL);
+	}
 	if (n < 0)
 		return (NS_TSIG_ERROR_NO_SPACE);
-	name = cp;
 	cp += n;
 
 	/* Type, class, ttl, length (not filled in yet). */
 	BOUNDS_CHECK(cp, INT16SZ + INT16SZ + INT32SZ + INT16SZ);
 	PUTSHORT(ns_t_tsig, cp);
 	PUTSHORT(ns_c_any, cp);
-	PUTLONG(0, cp);		/* TTL */
+	PUTLONG(0, cp);		/*%< TTL */
 	lenp = cp;
 	cp += 2;
 
@@ -142,7 +156,7 @@ ns_sign2(u_char *msg, int *msglen, int msgsize, int error, void *k,
 	/* Compute the signature. */
 	if (key != NULL && error != ns_r_badsig && error != ns_r_badkey) {
 		void *ctx;
-		u_char buf[MAXDNAME], *cp2;
+		u_char buf[NS_MAXCDNAME], *cp2;
 		int n;
 
 		dst_sign_data(SIG_MODE_INIT, key, &ctx, NULL, 0, NULL, 0);
@@ -162,6 +176,7 @@ ns_sign2(u_char *msg, int *msglen, int msgsize, int error, void *k,
 
 		/* Digest the key name. */
 		n = ns_name_ntol(name, buf, sizeof(buf));
+		INSIST(n > 0);
 		dst_sign_data(SIG_MODE_UPDATE, key, &ctx, buf, n, NULL, 0);
 
 		/* Digest the class and TTL. */
@@ -173,22 +188,23 @@ ns_sign2(u_char *msg, int *msglen, int msgsize, int error, void *k,
 
 		/* Digest the algorithm. */
 		n = ns_name_ntol(alg, buf, sizeof(buf));
+		INSIST(n > 0);
 		dst_sign_data(SIG_MODE_UPDATE, key, &ctx, buf, n, NULL, 0);
 
 		/* Digest the time signed, fudge, error, and other data */
 		cp2 = buf;
-		PUTSHORT(0, cp2);	/* Top 16 bits of time */
+		PUTSHORT(0, cp2);	/*%< Top 16 bits of time */
 		if (error != ns_r_badtime)
 			PUTLONG(timesigned, cp2);
 		else
 			PUTLONG(in_timesigned, cp2);
 		PUTSHORT(NS_TSIG_FUDGE, cp2);
-		PUTSHORT(error, cp2);	/* Error */
+		PUTSHORT(error, cp2);	/*%< Error */
 		if (error != ns_r_badtime)
-			PUTSHORT(0, cp2);	/* Other data length */
+			PUTSHORT(0, cp2);	/*%< Other data length */
 		else {
-			PUTSHORT(INT16SZ+INT32SZ, cp2);	/* Other data length */
-			PUTSHORT(0, cp2);	/* Top 16 bits of time */
+			PUTSHORT(INT16SZ+INT32SZ, cp2);	/*%< Other data length */
+			PUTSHORT(0, cp2);	/*%< Top 16 bits of time */
 			PUTLONG(timesigned, cp2);
 		}
 		dst_sign_data(SIG_MODE_UPDATE, key, &ctx, buf, cp2-buf,
@@ -210,17 +226,17 @@ ns_sign2(u_char *msg, int *msglen, int msgsize, int error, void *k,
 
 	/* The original message ID & error. */
 	BOUNDS_CHECK(cp, INT16SZ + INT16SZ);
-	PUTSHORT(ntohs(hp->id), cp);	/* already in network order */
+	PUTSHORT(ntohs(hp->id), cp);	/*%< already in network order */
 	PUTSHORT(error, cp);
 
 	/* Other data. */
 	BOUNDS_CHECK(cp, INT16SZ);
 	if (error != ns_r_badtime)
-		PUTSHORT(0, cp);	/* Other data length */
+		PUTSHORT(0, cp);	/*%< Other data length */
 	else {
-		PUTSHORT(INT16SZ+INT32SZ, cp);	/* Other data length */
+		PUTSHORT(INT16SZ+INT32SZ, cp);	/*%< Other data length */
 		BOUNDS_CHECK(cp, INT32SZ+INT16SZ);
-		PUTSHORT(0, cp);	/* Top 16 bits of time */
+		PUTSHORT(0, cp);	/*%< Top 16 bits of time */
 		PUTLONG(timesigned, cp);
 	}
 
@@ -309,7 +325,7 @@ ns_sign_tcp2(u_char *msg, int *msglen, int msgsize, int error,
 	BOUNDS_CHECK(cp, INT16SZ + INT16SZ + INT32SZ + INT16SZ);
 	PUTSHORT(ns_t_tsig, cp);
 	PUTSHORT(ns_c_any, cp);
-	PUTLONG(0, cp);		/* TTL */
+	PUTLONG(0, cp);		/*%< TTL */
 	lenp = cp;
 	cp += 2;
 
@@ -332,7 +348,7 @@ ns_sign_tcp2(u_char *msg, int *msglen, int msgsize, int error,
 
 	/* Digest the time signed and fudge. */
 	cp2 = buf;
-	PUTSHORT(0, cp2);	/* Top 16 bits of time */
+	PUTSHORT(0, cp2);	/*%< Top 16 bits of time */
 	PUTLONG(timesigned, cp2);
 	PUTSHORT(NS_TSIG_FUDGE, cp2);
 
@@ -353,7 +369,7 @@ ns_sign_tcp2(u_char *msg, int *msglen, int msgsize, int error,
 
 	/* The original message ID & error. */
 	BOUNDS_CHECK(cp, INT16SZ + INT16SZ);
-	PUTSHORT(ntohs(hp->id), cp);	/* already in network order */
+	PUTSHORT(ntohs(hp->id), cp);	/*%< already in network order */
 	PUTSHORT(error, cp);
 
 	/* Other data. */
@@ -367,3 +383,5 @@ ns_sign_tcp2(u_char *msg, int *msglen, int msgsize, int error,
 	*msglen = (cp - msg);
 	return (0);
 }
+
+/*! \file */

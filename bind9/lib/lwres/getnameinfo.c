@@ -1,21 +1,23 @@
 /*
- * Portions Copyright (C) 1999-2001  Internet Software Consortium.
+ * Portions Copyright (C) 2004, 2005  Internet Systems Consortium, Inc. ("ISC")
+ * Portions Copyright (C) 1999-2001, 2003  Internet Software Consortium.
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
  *
- * THE SOFTWARE IS PROVIDED "AS IS" AND INTERNET SOFTWARE CONSORTIUM
- * DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL
- * INTERNET SOFTWARE CONSORTIUM BE LIABLE FOR ANY SPECIAL, DIRECT,
- * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING
- * FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
- * NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION
- * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
+ * REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
+ * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+ * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
+ * OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
  */
 
-/* $Id: getnameinfo.c,v 1.1.1.1 2003/01/10 00:48:46 bbraun Exp $ */
+/* $Id: getnameinfo.c,v 1.34.18.3 2005/04/29 00:17:18 marka Exp $ */
+
+/*! \file */
 
 /*
  * Copyright (C) 1995, 1996, 1997, and 1998 WIDE Project.
@@ -29,11 +31,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    This product includes software developed by WIDE Project and
- *    its contributors.
- * 4. Neither the name of the project nor the names of its contributors
+ * 3. Neither the name of the project nor the names of its contributors
  *    may be used to endorse or promote products derived from this software
  *    without specific prior written permission.
  *
@@ -57,6 +55,62 @@
  *   but INRIA implementation returns EAI_xxx defined for getaddrinfo().
  */
 
+
+/**
+ *    This function is equivalent to the getnameinfo(3) function defined in
+ *    RFC2133. lwres_getnameinfo() returns the hostname for the struct
+ *    sockaddr sa which is salen bytes long. The hostname is of length
+ *    hostlen and is returned via *host. The maximum length of the hostname
+ *    is 1025 bytes: #NI_MAXHOST.
+ * 
+ *    The name of the service associated with the port number in sa is
+ *    returned in *serv. It is servlen bytes long. The maximum length of the
+ *    service name is #NI_MAXSERV - 32 bytes.
+ * 
+ *    The flags argument sets the following bits:
+ * 
+ * \li   #NI_NOFQDN:
+ *           A fully qualified domain name is not required for local hosts.
+ *           The local part of the fully qualified domain name is returned
+ *           instead.
+ * 
+ * \li   #NI_NUMERICHOST
+ *           Return the address in numeric form, as if calling inet_ntop(),
+ *           instead of a host name.
+ * 
+ * \li   #NI_NAMEREQD
+ *           A name is required. If the hostname cannot be found in the DNS
+ *           and this flag is set, a non-zero error code is returned. If the
+ *           hostname is not found and the flag is not set, the address is
+ *           returned in numeric form.
+ * 
+ * \li   #NI_NUMERICSERV
+ *           The service name is returned as a digit string representing the
+ *           port number.
+ * 
+ * \li   #NI_DGRAM
+ *           Specifies that the service being looked up is a datagram
+ *           service, and causes getservbyport() to be called with a second
+ *           argument of "udp" instead of its default of "tcp". This is
+ *           required for the few ports (512-514) that have different
+ *           services for UDP and TCP.
+ * 
+ * \section getnameinfo_return Return Values
+ * 
+ *    lwres_getnameinfo() returns 0 on success or a non-zero error code if
+ *    an error occurs.
+ * 
+ * \section getname_see See Also
+ * 
+ *    RFC2133, getservbyport(), 
+ *    lwres_getnamebyaddr(). lwres_net_ntop().
+ * 
+ * \section getnameinfo_bugs Bugs
+ * 
+ *    RFC2133 fails to define what the nonzero return values of
+ *    getnameinfo() are.
+ */
+
 #include <config.h>
 
 #include <stdio.h>
@@ -65,17 +119,19 @@
 #include <lwres/lwres.h>
 #include <lwres/net.h>
 #include <lwres/netdb.h>
+#include "print_p.h"
 
 #include "assert_p.h"
 
 #define SUCCESS 0
 
+/*% afd structure definition */
 static struct afd {
 	int a_af;
 	size_t a_addrlen;
 	size_t a_socklen;
 } afdl [] = {
-	/*
+	/*!
 	 * First entry is linked last...
 	 */
 	{ AF_INET, sizeof(struct in_addr), sizeof(struct sockaddr_in) },
@@ -91,7 +147,7 @@ static struct afd {
 #define ENI_SALEN	6
 #define ENI_NOSOCKET 	7
 
-/*
+/*!
  * The test against 0 is there to keep the Solaris compiler
  * from complaining about "end-of-loop code not reached".
  */
@@ -100,6 +156,7 @@ static struct afd {
 		if (result != 0) goto cleanup;	\
 	} while (0)
 
+/*% lightweight resolver socket address structure to hostname and service name */
 int
 lwres_getnameinfo(const struct sockaddr *sa, size_t salen, char *host,
 		  size_t hostlen, char *serv, size_t servlen, int flags)
@@ -166,13 +223,13 @@ lwres_getnameinfo(const struct sockaddr *sa, size_t salen, char *host,
 	}
 	proto = (flags & NI_DGRAM) ? "udp" : "tcp";
 
-	if (serv == NULL || servlen == 0) {
+	if (serv == NULL || servlen == 0U) {
 		/*
 		 * Caller does not want service.
 		 */
 	} else if ((flags & NI_NUMERICSERV) != 0 ||
 		   (sp = getservbyport(port, proto)) == NULL) {
-		sprintf(numserv, "%d", ntohs(port));
+		snprintf(numserv, sizeof(numserv), "%d", ntohs(port));
 		if ((strlen(numserv) + 1) > servlen)
 			ERR(ENI_MEMORY);
 		strcpy(serv, numserv);
@@ -201,7 +258,7 @@ lwres_getnameinfo(const struct sockaddr *sa, size_t salen, char *host,
 	}
 #endif
 
-	if (host == NULL || hostlen == 0) {
+	if (host == NULL || hostlen == 0U) {
 		/*
 		 * What should we do?
 		 */

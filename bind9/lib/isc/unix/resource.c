@@ -1,21 +1,21 @@
 /*
+ * Copyright (C) 2004  Internet Systems Consortium, Inc. ("ISC")
  * Copyright (C) 2000, 2001  Internet Software Consortium.
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
  *
- * THE SOFTWARE IS PROVIDED "AS IS" AND INTERNET SOFTWARE CONSORTIUM
- * DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL
- * INTERNET SOFTWARE CONSORTIUM BE LIABLE FOR ANY SPECIAL, DIRECT,
- * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING
- * FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
- * NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION
- * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
+ * REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
+ * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+ * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
+ * OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
  */
 
-/* $Id: resource.c,v 1.1.1.1 2003/01/10 00:48:42 bbraun Exp $ */
+/* $Id: resource.c,v 1.12 2004/03/05 05:11:46 marka Exp $ */
 
 #include <config.h>
 
@@ -100,15 +100,25 @@ isc_resource_setlimit(isc_resource_t resource, isc_resourcevalue_t value) {
 	int unixresult;
 	int unixresource;
 	isc_result_t result;
+	isc_resourcevalue_t rlim_max;
+	isc_boolean_t rlim_t_is_signed;
 
 	result = resource2rlim(resource, &unixresource);
 	if (result != ISC_R_SUCCESS)
 		return (result);
 
-	if (value == ISC_RESOURCE_UNLIMITED)
-		rlim_value = RLIM_INFINITY;
+	rlim_t_is_signed = ISC_TF(((double)(ISC_PLATFORM_RLIMITTYPE)-1) < 0);
 
-	else {
+	rlim_max = (ISC_PLATFORM_RLIMITTYPE)-1;
+	if (rlim_t_is_signed) rlim_max = ~((ISC_PLATFORM_RLIMITTYPE)1 << (sizeof(ISC_PLATFORM_RLIMITTYPE) * 8 - 1));
+
+	if ((unixresource == RLIMIT_NOFILE) && (value == ISC_RESOURCE_UNLIMITED))
+	{
+		rlim_value = rlim_max;
+		if (OPEN_MAX < rlim_max) rlim_value = OPEN_MAX;
+	}
+	else
+	{
 		/*
 		 * isc_resourcevalue_t was chosen as an unsigned 64 bit
 		 * integer so that it could contain the maximum range of
@@ -116,19 +126,7 @@ isc_resource_setlimit(isc_resource_t resource, isc_resourcevalue_t value) {
 		 * range on Unix systems.  Ensure the range of
 		 * ISC_PLATFORM_RLIMITTYPE is not overflowed.
 		 */
-		isc_resourcevalue_t rlim_max;
-		isc_boolean_t rlim_t_is_signed =
-			ISC_TF(((double)(ISC_PLATFORM_RLIMITTYPE)-1) < 0);
-
-		if (rlim_t_is_signed)
-			rlim_max = ~((ISC_PLATFORM_RLIMITTYPE)1 <<
-				     (sizeof(ISC_PLATFORM_RLIMITTYPE) * 8 - 1));
-		else
-			rlim_max = (ISC_PLATFORM_RLIMITTYPE)-1;
-
-		if (value > rlim_max)
-			value = rlim_max;
-
+		if (value > rlim_max) value = rlim_max;
 		rlim_value = value;
 	}
 

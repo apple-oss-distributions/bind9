@@ -1,21 +1,23 @@
 /*
- * Copyright (C) 1999-2001  Internet Software Consortium.
+ * Copyright (C) 2004, 2005  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1999-2003  Internet Software Consortium.
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
  *
- * THE SOFTWARE IS PROVIDED "AS IS" AND INTERNET SOFTWARE CONSORTIUM
- * DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL
- * INTERNET SOFTWARE CONSORTIUM BE LIABLE FOR ANY SPECIAL, DIRECT,
- * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING
- * FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
- * NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION
- * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
+ * REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
+ * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+ * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
+ * OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
  */
 
-/* $Id: t_api.c,v 1.1.1.1 2003/01/10 00:48:48 bbraun Exp $ */
+/* $Id: t_api.c,v 1.52.18.6 2005/11/30 03:44:39 marka Exp $ */
+
+/*! \file */
 
 #include <config.h>
 
@@ -33,7 +35,9 @@
 
 #include <isc/boolean.h>
 #include <isc/commandline.h>
+#include <isc/print.h>
 #include <isc/string.h>
+#include <isc/mem.h>
 
 #include <dns/compress.h>
 #include <dns/result.h>
@@ -51,7 +55,7 @@ static const char *Usage =
 		"\t-t <test_number> : run specified test number\n"
 		"\t-x               : don't execute tests in a subproc\n"
 		"\t-q <timeout>     : use 'timeout' as the timeout value\n";
-/*
+/*!<
  *		-a		-->	run all tests
  *		-b dir		-->	chdir to dir before running tests
  *		-c config	-->	use config file 'config'
@@ -64,7 +68,7 @@ static const char *Usage =
  *		-q timeout	-->	use 'timeout' as the timeout value
  */
 
-#define	T_MAXTESTS		256	/* must be 0 mod 8 */
+#define	T_MAXTESTS		256	/*% must be 0 mod 8 */
 #define	T_MAXENV		256
 #define	T_DEFAULT_CONFIG	"t_config"
 #define	T_BUFSIZ		256
@@ -118,6 +122,7 @@ main(int argc, char **argv) {
 	testspec_t		*pts;
 	struct sigaction	sa;
 
+	isc_mem_debugging = ISC_MEM_DEBUGRECORD;
 	first = ISC_TRUE;
 	subprocs = 1;
 	T_timeout = T_TCTOUT;
@@ -253,7 +258,7 @@ main(int argc, char **argv) {
 	 * Output start stanza to journal.
 	 */
 
-	sprintf(T_buf, "%s:", argv[0]);
+	snprintf(T_buf, sizeof(T_buf), "%s:", argv[0]);
 	len = strlen(T_buf);
 	(void) t_getdate(T_buf + len, T_BIGBUF - len);
 	t_putinfo("S", T_buf);
@@ -334,7 +339,7 @@ main(int argc, char **argv) {
 		++tnum;
 	}
 
-	sprintf(T_buf, "%s:", argv[0]);
+	snprintf(T_buf, sizeof(T_buf), "%s:", argv[0]);
 	len = strlen(T_buf);
 	(void) t_getdate(T_buf + len, T_BIGBUF - len);
 	t_putinfo("E", T_buf);
@@ -353,7 +358,7 @@ t_assert(const char *component, int anum, int class, const char *what, ...) {
 	 * Format text to a buffer.
 	 */
 	va_start(args, what);
-	(void)vsprintf(T_buf, what, args);
+	(void)vsnprintf(T_buf, sizeof(T_buf), what, args);
 	va_end(args);
 
 	(void)t_putinfo("A", T_buf);
@@ -365,7 +370,7 @@ t_info(const char *format, ...) {
 	va_list	args;
 
 	va_start(args, format);
-	(void) vsprintf(T_buf, format, args);
+	(void) vsnprintf(T_buf, sizeof(T_buf), format, args);
 	va_end(args);
 	(void) t_putinfo("I", T_buf);
 }
@@ -389,6 +394,9 @@ t_result(int result) {
 			break;
 		case T_UNTESTED:
 			p = "UNTESTED";
+			break;
+		case T_THREADONLY:
+			p = "THREADONLY";
 			break;
 		default:
 			p = "UNKNOWN";
@@ -534,7 +542,11 @@ t_fgetbs(FILE *fp) {
 			}
 		}
 		*p = '\0';
-		return(((c == EOF) && (n == 0)) ? NULL : buf);
+		if (c == EOF && n == 0U) {
+			free(buf);
+			return (NULL);
+		}
+		return (buf);
 	} else {
 		fprintf(stderr, "malloc failed %d", errno);
 		return(NULL);
@@ -569,7 +581,7 @@ t_getdate(char *buf, size_t buflen) {
 	t = time(NULL);
 	p = localtime(&t);
 	n = strftime(buf, buflen - 1, "%A %d %B %H:%M:%S %Y\n", p);
-	return(n != 0 ? buf : NULL);
+	return(n != 0U ? buf : NULL);
 }
 
 /*
@@ -588,8 +600,8 @@ struct dns_errormap {
 	{ ISC_R_RANGE,			"ISC_R_RANGE"		},
 	{ DNS_R_LABELTOOLONG,		"DNS_R_LABELTOOLONG"	},
 	{ DNS_R_BADESCAPE,		"DNS_R_BADESCAPE"	},
-	{ DNS_R_BADBITSTRING,		"DNS_R_BADBITSTRING"	},
-	{ DNS_R_BITSTRINGTOOLONG,	"DNS_R_BITSTRINGTOOLONG"},
+	/* { DNS_R_BADBITSTRING,	"DNS_R_BADBITSTRING"	}, */
+	/* { DNS_R_BITSTRINGTOOLONG,	"DNS_R_BITSTRINGTOOLONG"}, */
 	{ DNS_R_EMPTYLABEL,		"DNS_R_EMPTYLABEL"	},
 	{ DNS_R_BADDOTTEDQUAD,		"DNS_R_BADDOTTEDQUAD"	},
 	{ DNS_R_UNKNOWN,		"DNS_R_UNKNOWN"		},
@@ -741,8 +753,10 @@ t_eval(const char *filename, int (*func)(char **), int nargs) {
 			/*
 			 * Skip comment lines.
 			 */
-			if ((isspace((unsigned char)*p)) || (*p == '#'))
+			if ((isspace((unsigned char)*p)) || (*p == '#')) {
+				(void)free(p);
 				continue;
+			}
 
 			cnt = t_bustline(p, tokens);
 			if (cnt == nargs) {

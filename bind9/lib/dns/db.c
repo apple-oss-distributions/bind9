@@ -1,21 +1,23 @@
 /*
- * Copyright (C) 1999-2001  Internet Software Consortium.
+ * Copyright (C) 2004, 2005  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1999-2001, 2003  Internet Software Consortium.
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
  *
- * THE SOFTWARE IS PROVIDED "AS IS" AND INTERNET SOFTWARE CONSORTIUM
- * DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL
- * INTERNET SOFTWARE CONSORTIUM BE LIABLE FOR ANY SPECIAL, DIRECT,
- * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING
- * FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
- * NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION
- * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
+ * REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
+ * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+ * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
+ * OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
  */
 
-/* $Id: db.c,v 1.1.1.1 2003/01/10 00:48:32 bbraun Exp $ */
+/* $Id: db.c,v 1.74.18.6 2005/10/13 02:12:24 marka Exp $ */
+
+/*! \file */
 
 /***
  *** Imports
@@ -301,6 +303,11 @@ dns_db_endload(dns_db_t *db, dns_dbload_t **dbloadp) {
 
 isc_result_t
 dns_db_load(dns_db_t *db, const char *filename) {
+	return (dns_db_load2(db, filename, dns_masterformat_text));
+}
+
+isc_result_t
+dns_db_load2(dns_db_t *db, const char *filename, dns_masterformat_t format) {
 	isc_result_t result, eresult;
 	dns_rdatacallbacks_t callbacks;
 	unsigned int options = 0;
@@ -319,9 +326,9 @@ dns_db_load(dns_db_t *db, const char *filename) {
 	result = dns_db_beginload(db, &callbacks.add, &callbacks.add_private);
 	if (result != ISC_R_SUCCESS)
 		return (result);
-	result = dns_master_loadfile(filename, &db->origin, &db->origin,
-				     db->rdclass, options,
-				     &callbacks, db->mctx);
+	result = dns_master_loadfile2(filename, &db->origin, &db->origin,
+				      db->rdclass, options,
+				      &callbacks, db->mctx, format);
 	eresult = dns_db_endload(db, &callbacks.add_private);
 	/*
 	 * We always call dns_db_endload(), but we only want to return its
@@ -337,13 +344,22 @@ dns_db_load(dns_db_t *db, const char *filename) {
 
 isc_result_t
 dns_db_dump(dns_db_t *db, dns_dbversion_t *version, const char *filename) {
+	return ((db->methods->dump)(db, version, filename,
+				    dns_masterformat_text));
+}
+
+isc_result_t
+dns_db_dump2(dns_db_t *db, dns_dbversion_t *version, const char *filename,
+	     dns_masterformat_t masterformat) {
 	/*
-	 * Dump 'db' into master file 'filename'.
+	 * Dump 'db' into master file 'filename' in the 'masterformat' format.
+	 * XXXJT: is it okay to modify the interface to the existing "dump"
+	 * method?
 	 */
 
 	REQUIRE(DNS_DB_VALID(db));
 
-	return ((db->methods->dump)(db, version, filename));
+	return ((db->methods->dump)(db, version, filename, masterformat));
 }
 
 /***
@@ -428,7 +444,6 @@ dns_db_findnode(dns_db_t *db, dns_name_t *name,
 	 */
 
 	REQUIRE(DNS_DB_VALID(db));
-	REQUIRE(dns_name_issubdomain(name, &db->origin));
 	REQUIRE(nodep != NULL && *nodep == NULL);
 
 	return ((db->methods->findnode)(db, name, create, nodep));
@@ -447,7 +462,7 @@ dns_db_find(dns_db_t *db, dns_name_t *name, dns_dbversion_t *version,
 	 */
 
 	REQUIRE(DNS_DB_VALID(db));
-	REQUIRE(type != dns_rdatatype_sig);
+	REQUIRE(type != dns_rdatatype_rrsig);
 	REQUIRE(nodep == NULL || (nodep != NULL && *nodep == NULL));
 	REQUIRE(dns_name_hasbuffer(foundname));
 	REQUIRE(rdataset == NULL ||
@@ -576,7 +591,7 @@ dns_db_findrdataset(dns_db_t *db, dns_dbnode_t *node, dns_dbversion_t *version,
 	REQUIRE(node != NULL);
 	REQUIRE(DNS_RDATASET_VALID(rdataset));
 	REQUIRE(! dns_rdataset_isassociated(rdataset));
-	REQUIRE(covers == 0 || type == dns_rdatatype_sig);
+	REQUIRE(covers == 0 || type == dns_rdatatype_rrsig);
 	REQUIRE(type != dns_rdatatype_any);
 	REQUIRE(sigrdataset == NULL ||
 		(DNS_RDATASET_VALID(sigrdataset) &&
@@ -731,6 +746,13 @@ dns_db_nodecount(dns_db_t *db) {
 	return ((db->methods->nodecount)(db));
 }
 
+void
+dns_db_settask(dns_db_t *db, isc_task_t *task) {
+	REQUIRE(DNS_DB_VALID(db));
+
+	(db->methods->settask)(db, task);
+}
+
 isc_result_t
 dns_db_register(const char *name, dns_dbcreatefunc_t create, void *driverarg,
 		isc_mem_t *mctx, dns_dbimplementation_t **dbimp)
@@ -784,4 +806,16 @@ dns_db_unregister(dns_dbimplementation_t **dbimp) {
 	isc_mem_put(mctx, imp, sizeof(dns_dbimplementation_t));
 	isc_mem_detach(&mctx);
 	RWUNLOCK(&implock, isc_rwlocktype_write);
+}
+
+isc_result_t
+dns_db_getoriginnode(dns_db_t *db, dns_dbnode_t **nodep) {
+	REQUIRE(DNS_DB_VALID(db));
+	REQUIRE(dns_db_iszone(db) == ISC_TRUE);
+	REQUIRE(nodep != NULL && *nodep == NULL);
+
+	if (db->methods->getoriginnode != NULL)
+		return ((db->methods->getoriginnode)(db, nodep));
+
+	return (ISC_R_NOTFOUND);
 }

@@ -1,5 +1,5 @@
 #ifndef LINT
-static const char rcsid[] = "$Id: setitimer.c,v 1.1.1.1 2003/01/10 00:48:12 bbraun Exp $";
+static const char rcsid[] = "$Id: setitimer.c,v 1.1.352.1 2005/04/27 05:00:44 sra Exp $";
 #endif
 
 #include "port_before.h"
@@ -8,7 +8,7 @@ static const char rcsid[] = "$Id: setitimer.c,v 1.1.1.1 2003/01/10 00:48:12 bbra
 
 #include "port_after.h"
 
-/*
+/*%
  * Setitimer emulation routine.
  */
 #ifndef NEED_SETITIMER
@@ -25,3 +25,5 @@ __setitimer(int which, const struct itimerval *value,
 		return (-1);
 }
 #endif
+
+/*! \file */

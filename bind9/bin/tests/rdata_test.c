@@ -1,21 +1,21 @@
 /*
- * Copyright (C) 1998-2001  Internet Software Consortium.
+ * Copyright (C) 2004-2006  Internet Systems Consortium, Inc. ("ISC")
+ * Copyright (C) 1998-2003  Internet Software Consortium.
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
  *
- * THE SOFTWARE IS PROVIDED "AS IS" AND INTERNET SOFTWARE CONSORTIUM
- * DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL
- * INTERNET SOFTWARE CONSORTIUM BE LIABLE FOR ANY SPECIAL, DIRECT,
- * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING
- * FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
- * NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION
- * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES WITH
+ * REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR ANY SPECIAL, DIRECT,
+ * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+ * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE
+ * OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
  */
 
-/* $Id: rdata_test.c,v 1.1.1.1 2003/01/10 00:47:32 bbraun Exp $ */
+/* $Id: rdata_test.c,v 1.41.18.5 2006/02/26 23:49:49 marka Exp $ */
 
 #include <config.h>
 
@@ -89,6 +89,19 @@ viastruct(dns_rdata_t *rdata, isc_mem_t *mctx,
 	}
 	case dns_rdatatype_any: {
 		result = ISC_R_NOTIMPLEMENTED;
+		break;
+	}
+	case dns_rdatatype_apl: {
+		switch (rdata->rdclass) {
+		case dns_rdataclass_in: {
+			dns_rdata_in_apl_t in_apl;
+			result = dns_rdata_tostruct(rdata, sp = &in_apl, NULL);
+			break;
+		}
+		default:
+			result = ISC_R_NOTIMPLEMENTED;
+			break;
+		}
 		break;
 	}
 	case dns_rdatatype_cert: {
@@ -256,6 +269,11 @@ viastruct(dns_rdata_t *rdata, isc_mem_t *mctx,
 		result = dns_rdata_tostruct(rdata, sp = &txt, NULL);
 		break;
 	}
+	case dns_rdatatype_spf: {
+		dns_rdata_spf_t spf;
+		result = dns_rdata_tostruct(rdata, sp = &spf, NULL);
+		break;
+	}
 	case dns_rdatatype_unspec: {
 		dns_rdata_unspec_t unspec;
 		result = dns_rdata_tostruct(rdata, sp = &unspec, NULL);
@@ -271,12 +289,27 @@ viastruct(dns_rdata_t *rdata, isc_mem_t *mctx,
 		result = dns_rdata_tostruct(rdata, sp = &x25, NULL);
 		break;
 	}
+	case dns_rdatatype_nsec: {
+		dns_rdata_nsec_t nsec;
+		result = dns_rdata_tostruct(rdata, sp = &nsec, NULL);
+		break;
+	}
+	case dns_rdatatype_rrsig: {
+		dns_rdata_rrsig_t rrsig;
+		result = dns_rdata_tostruct(rdata, sp = &rrsig, NULL);
+		break;
+	}
+	case dns_rdatatype_dnskey: {
+		dns_rdata_dnskey_t dnskey;
+		result = dns_rdata_tostruct(rdata, sp = &dnskey, NULL);
+		break;
+	}
 	default:
 		result = ISC_R_NOTIMPLEMENTED;
 		break;
 	}
 	if (result != ISC_R_SUCCESS)
-		fprintf(stdout, "viastruct: tostuct %d %d return %s\n",
+		fprintf(stdout, "viastruct: tostruct %d %d return %s\n",
 			rdata->type, rdata->rdclass,
 			dns_result_totext(result));
 	else
@@ -318,6 +351,19 @@ viastruct(dns_rdata_t *rdata, isc_mem_t *mctx,
 	}
 	case dns_rdatatype_any: {
 		result = ISC_R_NOTIMPLEMENTED;
+		break;
+	}
+	case dns_rdatatype_apl: {
+		switch (rdata->rdclass) {
+		case dns_rdataclass_in: {
+			dns_rdata_in_apl_t in_apl;
+			result = dns_rdata_tostruct(rdata, sp = &in_apl, mctx);
+			break;
+		}
+		default:
+			result = ISC_R_NOTIMPLEMENTED;
+			break;
+		}
 		break;
 	}
 	case dns_rdatatype_cert: {
@@ -485,6 +531,11 @@ viastruct(dns_rdata_t *rdata, isc_mem_t *mctx,
 		result = dns_rdata_tostruct(rdata, sp = &txt, mctx);
 		break;
 	}
+	case dns_rdatatype_spf: {
+		dns_rdata_spf_t spf;
+		result = dns_rdata_tostruct(rdata, sp = &spf, mctx);
+		break;
+	}
 	case dns_rdatatype_unspec: {
 		dns_rdata_unspec_t unspec;
 		result = dns_rdata_tostruct(rdata, sp = &unspec, mctx);
@@ -500,12 +551,27 @@ viastruct(dns_rdata_t *rdata, isc_mem_t *mctx,
 		result = dns_rdata_tostruct(rdata, sp = &x25, mctx);
 		break;
 	}
+	case dns_rdatatype_nsec: {
+		dns_rdata_nsec_t nsec;
+		result = dns_rdata_tostruct(rdata, sp = &nsec, mctx);
+		break;
+	}
+	case dns_rdatatype_rrsig: {
+		dns_rdata_rrsig_t rrsig;
+		result = dns_rdata_tostruct(rdata, sp = &rrsig, mctx);
+		break;
+	}
+	case dns_rdatatype_dnskey: {
+		dns_rdata_dnskey_t dnskey;
+		result = dns_rdata_tostruct(rdata, sp = &dnskey, mctx);
+		break;
+	}
 	default:
 		result = ISC_R_NOTIMPLEMENTED;
 		break;
 	}
 	if (result != ISC_R_SUCCESS)
-		fprintf(stdout, "viastruct: tostuct %d %d return %s\n",
+		fprintf(stdout, "viastruct: tostruct %d %d return %s\n",
 			rdata->type, rdata->rdclass,
 			dns_result_totext(result));
 	else {
@@ -516,7 +582,7 @@ viastruct(dns_rdata_t *rdata, isc_mem_t *mctx,
 		result = dns_rdata_fromstruct(rdata2, rdc, rdt, sp, b);
 		if (result != ISC_R_SUCCESS)
 			fprintf(stdout,
-				"viastruct: fromstuct %d %d return %s\n",
+				"viastruct: fromstruct %d %d return %s\n",
 				rdata->type, rdata->rdclass,
 				dns_result_totext(result));
 		else if (rdata->length != rdata2->length ||
@@ -576,6 +642,19 @@ viastruct(dns_rdata_t *rdata, isc_mem_t *mctx,
 	}
 	case dns_rdatatype_any: {
 		result = ISC_R_NOTIMPLEMENTED;
+		break;
+	}
+	case dns_rdatatype_apl: {
+		switch (rdata->rdclass) {
+		case dns_rdataclass_in: {
+			dns_rdata_in_apl_t in_apl;
+			result = dns_rdata_fromstruct(rdata, rdc, rdt, &in_apl,							      b);
+			break;
+		}
+		default:
+			result = ISC_R_NOTIMPLEMENTED;
+			break;
+		}
 		break;
 	}
 	case dns_rdatatype_cert: {
@@ -744,6 +823,11 @@ viastruct(dns_rdata_t *rdata, isc_mem_t *mctx,
 		result = dns_rdata_fromstruct(rdata2, rdc, rdt, &txt, b);
 		break;
 	}
+	case dns_rdatatype_spf: {
+		dns_rdata_spf_t spf;
+		result = dns_rdata_fromstruct(rdata2, rdc, rdt, &spf, b);
+		break;
+	}
 	case dns_rdatatype_unspec: {
 		dns_rdata_unspec_t unspec;
 		result = dns_rdata_fromstruct(rdata2, rdc, rdt, &unspec, b);
@@ -757,6 +841,21 @@ viastruct(dns_rdata_t *rdata, isc_mem_t *mctx,
 	case dns_rdatatype_x25: {
 		dns_rdata_x25_t x25;
 		result = dns_rdata_fromstruct(rdata2, rdc, rdt, &x25, b);
+		break;
+	}
+	case dns_rdatatype_nsec: {
+		dns_rdata_nsec_t nsec;
+		result = dns_rdata_fromstruct(rdata2, rdc, rdt, &nsec, b);
+		break;
+	}
+	case dns_rdatatype_rrsig: {
+		dns_rdata_rrsig_t rrsig;
+		result = dns_rdata_fromstruct(rdata2, rdc, rdt, &rrsig, b);
+		break;
+	}
+	case dns_rdatatype_dnskey: {
+		dns_rdata_dnskey_t dnskey;
+		result = dns_rdata_fromstruct(rdata2, rdc, rdt, &dnskey, b);
 		break;
 	}
 	default:
@@ -836,7 +935,7 @@ main(int argc, char *argv[]) {
 		}
 	}
 
-	memset(&dctx, '0', sizeof dctx);
+	memset(&dctx, 0, sizeof(dctx));
 	dctx.allowed = DNS_COMPRESS_ALL;
 
 	RUNTIME_CHECK(isc_mem_create(0, 0, &mctx) == ISC_R_SUCCESS);
@@ -929,7 +1028,7 @@ main(int argc, char *argv[]) {
 		dns_rdata_init(&rdata);
 		isc_buffer_init(&dbuf, inbuf, sizeof(inbuf));
 		result = dns_rdata_fromtext(&rdata, class, type, lex,
-					    NULL, ISC_FALSE, mctx, &dbuf,
+					    NULL, 0, mctx, &dbuf,
 					    NULL);
 		if (result != ISC_R_SUCCESS) {
 			fprintf(stdout,
@@ -940,7 +1039,7 @@ main(int argc, char *argv[]) {
 		}
 		if (raw) {
 			unsigned int i;
-			for (i = 0 ; i < rdata.length ; /* */ ) {
+			for (i = 0; i < rdata.length; /* */ ) {
 				fprintf(stdout, "%02x", rdata.data[i]);
 				if ((++i % 20) == 0)
 					fputs("\n", stdout);
@@ -976,7 +1075,7 @@ main(int argc, char *argv[]) {
 			if (raw > 2) {
 				unsigned int i;
 				fputs("\n", stdout);
-				for (i = 0 ; i < (unsigned int)len ; /* */ ) {
+				for (i = 0; i < (unsigned int)len; /* */ ) {
 					fprintf(stdout, "%02x",
 				((unsigned char*)wbuf.base)[i + wbuf.current]);
 					if ((++i % 20) == 0)
@@ -1002,7 +1101,7 @@ main(int argc, char *argv[]) {
 			isc_buffer_init(&dbuf, inbuf, sizeof(inbuf));
 			dns_decompress_init(&dctx, -1, DNS_DECOMPRESS_ANY);
 			result = dns_rdata_fromwire(&rdata, class, type, &wbuf,
-						    &dctx, ISC_FALSE, &dbuf);
+						    &dctx, 0, &dbuf);
 			dns_decompress_invalidate(&dctx);
 			if (result != ISC_R_SUCCESS) {
 			fprintf(stdout,
@@ -1015,7 +1114,7 @@ main(int argc, char *argv[]) {
 		if (raw > 1) {
 			unsigned int i;
 			fputs("\n", stdout);
-			for (i = 0 ; i < rdata.length ; /* */ ) {
+			for (i = 0; i < rdata.length; /* */ ) {
 				fprintf(stdout, "%02x", rdata.data[i]);
 				if ((++i % 20) == 0)
 					fputs("\n", stdout);

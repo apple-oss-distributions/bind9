@@ -52,25 +52,25 @@
  */
 
 /*
+ * Copyright (c) 2004 by Internet Systems Consortium, Inc. ("ISC")
  * Portions Copyright (c) 1996-1999 by Internet Software Consortium.
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
  *
- * THE SOFTWARE IS PROVIDED "AS IS" AND INTERNET SOFTWARE CONSORTIUM DISCLAIMS
- * ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL INTERNET SOFTWARE
- * CONSORTIUM BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
- * DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
- * PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
- * ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
- * SOFTWARE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND ISC DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS.  IN NO EVENT SHALL ISC BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
+ * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
 #if defined(LIBC_SCCS) && !defined(lint)
 static const char sccsid[] = "@(#)inet_addr.c	8.1 (Berkeley) 6/17/93";
-static const char rcsid[] = "$Id: inet_addr.c,v 1.1.1.1 2003/01/10 00:48:13 bbraun Exp $";
+static const char rcsid[] = "$Id: inet_addr.c,v 1.4.18.1 2005/04/27 05:00:52 sra Exp $";
 #endif /* LIBC_SCCS and not lint */
 
 #include "port_before.h"
@@ -85,7 +85,7 @@ static const char rcsid[] = "$Id: inet_addr.c,v 1.1.1.1 2003/01/10 00:48:13 bbra
 
 #include "port_after.h"
 
-/*
+/*%
  * Ascii internet address interpretation routine.
  * The value returned is in network order.
  */
@@ -98,7 +98,7 @@ inet_addr(const char *cp) {
 	return (INADDR_NONE);
 }
 
-/* 
+/*%
  * Check whether "cp" is a valid ascii representation
  * of an Internet address and convert to a binary address.
  * Returns 1 if the address is valid, 0 if not.
@@ -156,7 +156,7 @@ inet_aton(const char *cp, struct in_addr *addr) {
 			 *	a.b.c	(with c treated as 16 bits)
 			 *	a.b	(with b treated as 24 bits)
 			 */
-			if (pp >= parts + 3 || val > 0xff)
+			if (pp >= parts + 3 || val > 0xffU)
 				return (0);
 			*pp++ = val;
 			c = *++cp;
@@ -179,23 +179,23 @@ inet_aton(const char *cp, struct in_addr *addr) {
 	 */
 	n = pp - parts + 1;
 	switch (n) {
-	case 1:				/* a -- 32 bits */
+	case 1:				/*%< a -- 32 bits */
 		break;
 
-	case 2:				/* a.b -- 8.24 bits */
-		if (val > 0xffffff)
+	case 2:				/*%< a.b -- 8.24 bits */
+		if (val > 0xffffffU)
 			return (0);
 		val |= parts[0] << 24;
 		break;
 
-	case 3:				/* a.b.c -- 8.8.16 bits */
-		if (val > 0xffff)
+	case 3:				/*%< a.b.c -- 8.8.16 bits */
+		if (val > 0xffffU)
 			return (0);
 		val |= (parts[0] << 24) | (parts[1] << 16);
 		break;
 
-	case 4:				/* a.b.c.d -- 8.8.8.8 bits */
-		if (val > 0xff)
+	case 4:				/*%< a.b.c.d -- 8.8.8.8 bits */
+		if (val > 0xffU)
 			return (0);
 		val |= (parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8);
 		break;
@@ -204,3 +204,5 @@ inet_aton(const char *cp, struct in_addr *addr) {
 		addr->s_addr = htonl(val);
 	return (1);
 }
+
+/*! \file */
