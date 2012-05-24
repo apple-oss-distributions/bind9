@@ -15,7 +15,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-/* $Id: rndc.c,v 1.126.66.7 2011-02-03 12:17:22 tbox Exp $ */
+/* $Id: rndc.c,v 1.131.20.2 2011-02-28 01:19:59 tbox Exp $ */
 
 /*! \file */
 

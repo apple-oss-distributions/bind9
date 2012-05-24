@@ -15,7 +15,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-/* $Id: log_test.c,v 1.26.558.2 2011-01-14 00:51:07 tbox Exp $ */
+/* $Id: log_test.c,v 1.28 2011-01-14 00:51:43 tbox Exp $ */
 
 /* Principal Authors: DCL */
 
